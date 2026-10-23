@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034  # variables are used by the sourcing scripts
 # Shared helpers for the klipper-rf2000v2 scripts
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KLIPPER_DIR="${KLIPPER_DIR:-$HOME/klipper}"
@@ -47,6 +48,16 @@ find_serial_port() {
         [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le ${#ports[@]} ] \
             || die "invalid selection"
         echo "${ports[$((n-1))]}"
+    fi
+}
+
+have_service() {
+    systemctl list-unit-files "$1.service" 2>/dev/null | grep -q "^$1.service"
+}
+
+restart_service() {
+    if have_service "$1"; then
+        sudo systemctl restart "$1"
     fi
 }
 

@@ -31,7 +31,7 @@ for a in "$@"; do
         --no-web) WEB=0;;
         --no-flash) FLASH=0;;
         --update) UPDATE=1;;
-        -y|--yes) ASSUME_YES=1;;
+        -y|--yes) export ASSUME_YES=1;;
         -h|--help) sed -n 2,26p "$0"; exit 0;;
         *) die "unknown option $a";;
     esac
@@ -149,14 +149,16 @@ install_config() {
     # The RF2000v2 files are linked so "git pull" updates them; personal
     # changes belong into printer.cfg.
     if [ -e "$CONFIG_DIR/rf2000v2" ] && [ ! -L "$CONFIG_DIR/rf2000v2" ]; then
-        local bak="$CONFIG_DIR/rf2000v2.bak-$(date +%s)"
+        local bak
+        bak="$CONFIG_DIR/rf2000v2.bak-$(date +%s)"
         warn "Existing $CONFIG_DIR/rf2000v2 moved to $bak"
         mv "$CONFIG_DIR/rf2000v2" "$bak"
     fi
     ln -sfn "$REPO_DIR/config/rf2000v2" "$CONFIG_DIR/rf2000v2"
     if [ -f "$CONFIG_DIR/printer.cfg" ] \
        && ! grep -q "include rf2000v2/hardware.cfg" "$CONFIG_DIR/printer.cfg"; then
-        local bak="$CONFIG_DIR/printer.cfg.bak-$(date +%s)"
+        local bak
+        bak="$CONFIG_DIR/printer.cfg.bak-$(date +%s)"
         warn "Existing printer.cfg saved as $bak"
         cp "$CONFIG_DIR/printer.cfg" "$bak"
         cp "$REPO_DIR/config/printer.cfg" "$CONFIG_DIR/printer.cfg"
@@ -180,7 +182,7 @@ set_serial() {
 # ---------------------------------------------------------------------
 if [ $UPDATE -eq 1 ]; then
     link_extras
-    sudo systemctl restart klipper || true
+    restart_service klipper
     info "Updated. If the release notes mention firmware changes run"
     info "scripts/build_firmware.sh && scripts/flash_mcu.sh"
     exit 0
@@ -209,8 +211,8 @@ if [ $FLASH -eq 1 ]; then
     fi
 fi
 
-sudo systemctl restart klipper || true
-[ $WEB -eq 1 ] && [ $RF_ONLY -eq 0 ] && sudo systemctl restart moonraker || true
+restart_service klipper
+restart_service moonraker
 "$REPO_DIR/scripts/check_install.sh" || true
 info "Done.  Open http://$(hostname -I 2>/dev/null | awk '{print $1}')/ and"
 info "follow docs/04-first-start.md before the first print."

@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # weekly: catch breaking changes in Klipper master early
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-avr binutils-avr avr-libc shellcheck
+
+      - name: Checkout Klipper (master)
+        run: git clone --depth 1 https://github.com/Klipper3d/klipper.git ../klipper
+
+      - name: Checkout RF firmware sources (for the pin check)
+        run: |
+          git clone --depth 1 -b development https://github.com/RF1000/Repetier-Firmware.git ../rf-official
+          git clone --depth 1 https://github.com/Nibbels/Repetier-Firmware.git ../rf-community
+
+      - name: Python environment
+        run: |
+          python3 -m venv ../venv
+          ../venv/bin/pip install -r ../klipper/scripts/klippy-requirements.txt || \
+            ../venv/bin/pip install greenlet cffi jinja2 pyserial msgspec
+
+      - name: Shell scripts
+        run: shellcheck -x -S warning scripts/*.sh tests/*.sh
+
+      - name: Pin map vs. official and community RF2000v2 firmware
+        run: |
+          python3 tools/verify_pins.py ../rf-official/RF2000v2/Repetier config/rf2000v2/*.cfg config/rf2000v2/macros/*.cfg
+          python3 tools/verify_pins.py ../rf-community/Repetier
+
+      - name: Thermistor fit
+        run: python3 tools/thermistor_from_repetier.py ../rf-community/Repetier/Extruder.cpp
+
+      - name: Unit tests
+        run: KLIPPER_DIR=../klipper ../venv/bin/python tests/test_units.py
+
+      - name: Klippy batch tests
+        run: tests/run_klippy_batch.sh ../klipper ../venv/bin/python
+
+      - name: Build RF2000v2 MCU firmware
+        run: |
+          cp firmware/rf2000v2.config ../klipper/.config
+          make -C ../klipper olddefconfig
+          make -C ../klipper -j"$(nproc)"
+          avr-size --mcu=atmega2560 -C ../klipper/out/klipper.elf
+          mkdir -p artifact
+          cp ../klipper/out/klipper.elf.hex artifact/klipper-rf2000v2.hex
+          git -C ../klipper describe --always --tags > artifact/klipper-version.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: klipper-rf2000v2-firmware
+          path: artifact/

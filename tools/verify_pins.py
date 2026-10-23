@@ -12,7 +12,7 @@ for every pin, that
      port pin.
 
 Usage:
-    verify_pins.py <path-to-Repetier-dir> [printer.cfg]
+    verify_pins.py <path-to-Repetier-dir> [config.cfg ...]
 
 Exit status is non-zero if any mismatch is found.
 """
@@ -155,7 +155,9 @@ def main():
         print('FAIL %-22s not found in pins.h' % name)
         errors += 1
     if len(sys.argv) > 2:
-        used = cfg_pins(sys.argv[2])
+        used = set()
+        for path in sys.argv[2:]:
+            used |= cfg_pins(path)
         valid = set(EXPECTED.values()) | set(EXPECTED_ADC.values())
         # I2C (TWI) bus pins are implied by "i2c_bus: twi"
         valid |= {'PD0', 'PD1'}

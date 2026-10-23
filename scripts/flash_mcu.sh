@@ -21,7 +21,7 @@ while [ $# -gt 0 ]; do
         --port) PORT="$2"; shift 2;;
         --no-backup) DO_BACKUP=0; shift;;
         --hex) HEX="$2"; shift 2;;
-        -y|--yes) ASSUME_YES=1; shift;;
+        -y|--yes) export ASSUME_YES=1; shift;;
         *) die "unknown option $1";;
     esac
 done

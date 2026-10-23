@@ -12,7 +12,7 @@ EEPROM=0
 for a in "$@"; do
     case "$a" in
         --eeprom) EEPROM=1;;
-        -y|--yes) ASSUME_YES=1;;
+        -y|--yes) export ASSUME_YES=1;;
         *) HEX="$a";;
     esac
 done
