@@ -33,7 +33,8 @@ scripts.
    ```
    The installer builds the RF2000v2 MCU firmware, **backs up the original
    RF firmware** and flashes Klipper over USB → [docs/03-flash-printer.md](docs/03-flash-printer.md)
-4. Open `http://<pi-address>/` and work through
+4. Open `http://<pi-address>/`, run the self-test
+   ([docs/09-hardware-validation.md](docs/09-hardware-validation.md)) and work through
    [docs/04-first-start.md](docs/04-first-start.md).
 5. Set up the slicer → [docs/06-slicer.md](docs/06-slicer.md).
 
@@ -69,6 +70,7 @@ Full list and command reference: [docs/05-features.md](docs/05-features.md)
 6. [Slicer setup](docs/06-slicer.md)
 7. [Troubleshooting](docs/07-troubleshooting.md)
 8. [Development, verification, limitations](docs/08-development.md)
+9. [Hardware validation / self-test](docs/09-hardware-validation.md) - please report your results
 
 ## Tests
 

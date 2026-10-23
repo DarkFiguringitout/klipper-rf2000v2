@@ -1,6 +1,8 @@
 # 4. First start and calibration
 
-Work through this list in order the first time Klipper drives the printer.
+Run the self-test first ([09-hardware-validation.md](09-hardware-validation.md),
+`RF_SELFTEST_ALL` and the following steps), then work through this list in
+order the first time Klipper drives the printer.
 Type the commands in the Mainsail console. Keep one hand near the power
 switch until homing and the heaters have been checked.
 
