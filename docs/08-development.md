@@ -79,6 +79,21 @@ need confirming on real hardware; please report results in an issue:
 * Y travel (290 mm from the firmware), bed screw positions in
   `[screws_tilt_adjust]` (placeholders), part fan PWM frequency
 * RGB / case light polarity, buzzer type
+* TPS3823 watchdog: the port relies on a floating WDI disabling it (TI
+  datasheet). A pull resistor on some board revision would reset the MCU
+  every ~1.6 s (see troubleshooting)
+* the Z-max switch position (assumed at `position_max` = 185, as the RF
+  firmware does; first-start step 8 checks it)
+* whether the part fan tolerates 100 % (the RF fw allows it for S255)
+* reliability of the strain gauge I2C over the carriage cable (Klipper
+  shuts down on any I2C error, see docs/05)
+* DRV8711 register retention through enable (nSLEEP) cycles - the RF
+  firmware relies on it as well
+
+Note: the Klippy batch tests run without sensor responses, so they cover
+configuration, macros, tool changes and motion, but not the probing
+algorithm itself; that is covered by the probe simulation in the unit
+tests.
 
 ## Contributing
 

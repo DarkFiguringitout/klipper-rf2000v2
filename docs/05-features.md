@@ -8,7 +8,7 @@ G-code macros in `config/rf2000v2/macros/`.
 | RF firmware feature | Klipper | How |
 |---|---|---|
 | 5x DRV8711 motor current / micro steps | Extra `drv8711.py` | SPI init, `SET_DRV_CURRENT`, `DRV_STATUS`, fault input |
-| Silent mode (M3920) | Macro | `RF_SILENT_MODE` switches the current profile |
+| Motor current profiles | Macro | `RF_SILENT_MODE` (factory / community "normal"); `M3920` is a project shortcut, not an RF code |
 | Reduced extruder current while paused | Macro | `PAUSE` / `RESUME` |
 | Dual extrusion, T0/T1 offsets | Native + macro | `ACTIVATE_EXTRUDER`, `SET_GCODE_OFFSET`, `BED_MESH_OFFSET` |
 | Align extruders (M3309) | Macro + DMS | `RF_ALIGN_EXTRUDERS` |
@@ -33,7 +33,10 @@ G-code macros in `config/rf2000v2/macros/`.
 | Case fan (M3120/M3121) | Native `controller_fan` | automatic |
 | RGB light effects (M3303-M3308) | Native `led` + macro | `RGB_LIGHT MODE=AUTO` |
 | Case light | Native `led` | `SET_LED LED=case_light WHITE=1` |
-| Heat bed temperature compensation | Macro | `M140`/`M190` wrapper |
+| Heat bed temperature compensation | Macro | `M140`/`M190` wrapper, off by default (the official fw table is an identity), community table selectable |
+| Part fan PWM mapping (S1..254 → 90..193, S255 → full) | Macro | `M106` wrapper |
+| Ditto printing (FEATURE_DITTO_PRINTING) | Native + macro | `RF_DITTO S=1/0` (`SYNC_EXTRUDER_MOTION`) |
+| DMS digits on the LCD | Native `display_data` | status screen line 2, right |
 | LCD 20x4 + keys | Native `display`, `gcode_button` | menu + `RF2000v2` sub menu |
 | Bed up/down, extrude/retract keys | Macro | hold to repeat; live Z while printing |
 | External watchdog | Native `pwm_tool` (optional) | see `hardware.cfg` |
@@ -129,6 +132,17 @@ that pressure directly. Three ways to use it:
 3. **RF-style open loop (M3911):** reduce flow and/or speed proportionally
    between `MIN_DIGITS` and `MAX_DIGITS`, as in the community firmware.
 
+### I2C errors
+
+Klipper's AVR I2C driver shuts the MCU down on any bus error (timeout,
+missing ACK) - there is no retry. During a print the emergency monitor reads
+the strain gauge 10 times per second over the carriage cable, so a loose or
+noisy connector would end the print with `i2c timeout`. If that happens on
+your printer, fix the cable/connector, or print without the in-print
+monitor: `PRINT_START ... MONITOR=0` (or `monitor: False` in
+`[rf2000_dms]`). You then lose the emergency pause, SenseOffset, flow and
+pressure control during that print; probing still works.
+
 Only one of 2 and 3 can be active: enabling one switches the other off.
 While paused the adjustments are kept (RESUME restores the g-code state
 they belong to); they are removed when the print ends or is cancelled. Run `DMS_TARE` at printing temperature first
@@ -145,7 +159,7 @@ they belong to); they are removed when the print ends or is cancelled. Run `DMS_
 | `DRV_STATUS_ALL [CLEAR=1]` | all five drivers |
 | `DRV_DUMP STEPPER=` | read back all registers |
 | `DRV_INIT STEPPER=` | send the configuration again |
-| `RF_SILENT_MODE S=0/1` | factory (145/140/100/90/90) or quiet (110/110/100/90/90) |
+| `RF_SILENT_MODE S=0/1` | factory (145/140/100/90/90) or community "normal" (110/110/105/90/90) |
 
 Config options: `torque`, `run_current` + `sense_resistor`,
 `sense_amp_gain` (5/10/20/40), `dead_time`, `reg_off`, `reg_blank`,
@@ -176,6 +190,12 @@ before X and Y. `M3`/`M5` switch the spindle output (230 V socket, change
 work part, `RF_WORK_PART_SCAN` scans the work part surface into the
 `workpart` mesh (`M3141` loads it). `RF_MODE MODE=PRINT` returns to printing.
 
+## Ditto printing
+
+`RF_DITTO S=1` makes T1 extrude exactly like T0, so two copies are printed
+33.6 mm apart (heat both nozzles). Slice a single-extruder print that fits
+into X 0..136 and is narrower than about 30 mm. `RF_DITTO S=0` ends it.
+
 ## Lights and outputs
 
 * `RGB_LIGHT MODE=OFF|WHITE|AUTO|MANUAL [R= G= B=]`. AUTO uses red while
@@ -184,14 +204,16 @@ work part, `RF_WORK_PART_SCAN` scans the work part surface into the
 * `SET_LED LED=case_light WHITE=0..1`, or the RIGHT key.
 * `SET_MAINS_OUTPUT S=0/1` (230 V), `SET_FET P=1|2 S=0/1` (X42/X44).
 * `M300 P<ms>` beeps.
+* `M106 S<0..255>` uses the RF part fan mapping: S1..254 → PWM 35-76 %
+  (the fan does not run reliably lower), S255 → 100 %.
 
 ## RF M-code compatibility
 
 G-code written for the RF firmware keeps working:
 `M3000 M3001 M3006 M3009 M3010 M3011 M3013 M3060 M3070 M3075 M3076 M3080
 M3103 M3105 M3117 M3120 M3121 M3130 M3140 M3141 M3146 M3150 M3300 M3301
-M3303-M3308 M3309 M3900 M3909 M3911 M3913 M3914 M3919 M3920 M3939 M3941
-M3987 M355`.
+M3303-M3308 M3309 M3900 M3909 M3911 M3913 M3914 M3919 M3939 M3941
+M3987 M355` (plus `M3920`, a project shortcut for `RF_SILENT_MODE`).
 Not ported (no equivalent needed under Klipper): the scan tuning codes
 M3020-M3055 (use the `[rf2000_dms]` / `[bed_mesh]` options), M3005,
 M3028/M3029, M3079, M3090 (watchdog test), M3091 (EEPROM erase), M3115,

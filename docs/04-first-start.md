@@ -72,10 +72,14 @@ PID_CALIBRATE HEATER=heater_bed TARGET=60
 SAVE_CONFIG
 ```
 
-The bed uses the RF firmware's surface temperature compensation (`M140 S60`
-sets the sensor to about 62 °C so the print surface reaches 60 °C). Turn it
-off in `rf_gcodes.cfg` (`_BED_TEMP_COMP variable_enabled`) if you prefer
-raw sensor temperatures.
+(PID values, `[stepper_z] position_endstop` and `[rf2000_dms] z_offset` are
+in your `printer.cfg`, not in the `rf2000v2/` includes, because Klipper can
+only `SAVE_CONFIG` options of the main config file.)
+
+Bed temperatures are sensor temperatures, exactly like the stock Conrad
+firmware. The community firmware's surface compensation (`M140 S60` heats
+the sensor to about 62 °C) can be enabled in `rf_gcodes.cfg`
+(`_BED_TEMP_COMP variable_enabled: True`).
 
 ## 6. Strain gauge (DMS)
 
@@ -124,6 +128,13 @@ SAVE_CONFIG
 
 ## 8. Z offset
 
+> Z-max switch: Klipper assumes it sits at Z = 185 (`position_max`, as the
+> RF firmware does). After `G28`, move the bed down slowly
+> (`G1 Z180 F300`, then `Z184`) and check with `QUERY_Z_MAX` that the
+> switch is still open. If it triggers earlier, lower `position_max` of
+> `[stepper_z]` in `printer.cfg`.
+
+
 The nozzle is the probe, so `z_offset` in `[rf2000_dms]` is 0 and the mesh
 is in absolute heights. `DMS_Z_OFFSET_SCAN` (RF `M3900`) probes the bed
 center and sets the g-code Z offset so that `Z0` touches the bed.
@@ -153,12 +164,14 @@ SET_TOOL_OFFSET X=33.55 Y=-0.10
 
 ## 10. Extruder steps
 
-Mark the filament 120 mm above the extruder, heat it, and extrude 100 mm:
+Mark the filament 120 mm above the extruder, heat it, and extrude 100 mm
+(two moves - Klipper limits single extrude-only moves to 50 mm):
 
 ```
 T0
 M83
-G1 E100 F100
+G1 E50 F100
+G1 E50 F100
 ```
 
 new `rotation_distance = 25.0 × (extruded length / 100)`. Put the value into

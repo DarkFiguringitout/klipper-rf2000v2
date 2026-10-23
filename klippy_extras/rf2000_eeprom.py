@@ -182,10 +182,14 @@ class RF2000EEPROM:
             xs, ys, zmm, ms = parse_matrix(sector, self.z_full_steps_per_mm)
         except ValueError as e:
             raise gcmd.error("RF matrix %d: %s" % (slot, str(e)))
-        xc = gcmd.get_int('X_COUNT', self.profile_x_count or len(xs),
-                          minval=3, maxval=50)
-        yc = gcmd.get_int('Y_COUNT', self.profile_y_count or len(ys),
-                          minval=3, maxval=50)
+        # at least 4 points per axis so bicubic interpolation can be used
+        # (lagrange oscillates on long axes)
+        xc = gcmd.get_int('X_COUNT',
+                          self.profile_x_count or max(4, len(xs)),
+                          minval=4, maxval=50)
+        yc = gcmd.get_int('Y_COUNT',
+                          self.profile_y_count or max(4, len(ys)),
+                          minval=4, maxval=50)
         min_x, max_x, min_y, max_y, matrix = resample(xs, ys, zmm, xc, yc)
         # same names as M3009 / M3001: slot 1 = "default", n = "hbs_n"
         default_name = 'default' if slot == 1 else 'hbs_%d' % (slot,)
@@ -196,7 +200,7 @@ class RF2000EEPROM:
         if bed_mesh is None:
             raise gcmd.error("[bed_mesh] must be configured")
         from . import bed_mesh as bm
-        algo = 'bicubic' if xc >= 4 and yc >= 4 else 'lagrange'
+        algo = 'bicubic'
         params = {'min_x': min_x, 'max_x': max_x, 'min_y': min_y,
                   'max_y': max_y, 'x_count': xc, 'y_count': yc,
                   'mesh_x_pps': 2, 'mesh_y_pps': 2, 'algo': algo,

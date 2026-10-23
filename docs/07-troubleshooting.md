@@ -2,6 +2,9 @@
 
 | Symptom | Cause / fix |
 |---|---|
+| MCU resets every ~1.6 s, "Lost communication", never gets ready | The TPS3823 hardware watchdog is active on your board (WDI not floating, e.g. a pull resistor). Enabling `[pwm_tool rf2000_watchdog]` only helps once Klipper is configured. Please open an issue with your board revision |
+| `SAVE_CONFIG ... conflicts with included value` | The option is set in a file under `rf2000v2/`. Calibrated options (PID, `position_endstop` of Z, `z_offset`) must be in `printer.cfg` only |
+| `i2c timeout` during a print | See docs/05 "I2C errors": check the carriage cable, or `PRINT_START ... MONITOR=0` |
 | `mcu 'mcu': Unable to connect` | Wrong `serial:` in `printer.cfg`. `ls /dev/serial/by-id/` and put the full path there. Printer switched on? |
 | `MCU Protocol error` / version mismatch | Host and MCU Klipper versions differ after an update: `scripts/update.sh --klipper` |
 | Motors don't move, hold no torque | DRV8711 not configured: check `klippy.log` for `drv8711`, run `DRV_INIT STEPPER=stepper_x`, `DRV_STATUS_ALL`. Check the `enable_pin`s are not inverted. |

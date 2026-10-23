@@ -183,8 +183,13 @@ class RF2000DMS:
         # Emergency stop (Z blocked while moving Z without extrusion)
         self.stop_min = config.getint('emergency_stop_digits_min', -5000)
         self.stop_max = config.getint('emergency_stop_digits_max', 5000)
-        self.stop_checks = config.getint('emergency_stop_checks', 3,
+        self.stop_checks = config.getint('emergency_stop_checks', 2,
                                          minval=1)
+        # faster polling while Z moves (RF fw checks every 10ms)
+        self.stop_interval = config.getfloat('emergency_stop_interval', 0.050,
+                                             minval=0.020)
+        # identical ADC values in a row while descending = frozen sensor
+        self.frozen_samples = config.getint('frozen_samples', 30, minval=5)
         # Monitor
         self.monitor_interval = config.getfloat('monitor_interval', 0.100,
                                                 minval=0.020)
@@ -299,6 +304,8 @@ class RF2000DMS:
         status = self.cmd_helper.get_status(eventtime)
         status.update({
             'digits': self.sensor.last_value,
+            'force': (None if self.sensor.last_value is None
+                      else self.sensor.last_value - self.tare),
             'tare': self.tare,
             'idle': self.last_idle,
             'monitor': self.monitor_enabled,
@@ -396,6 +403,18 @@ class RF2000DMS:
                 return reactor.NEVER
             if fresh:
                 state['samples'] += 1
+                if val == state.get('last') and self.sensor.use_drdy:
+                    state['same'] = state.get('same', 0) + 1
+                    if state['same'] >= self.frozen_samples:
+                        state['error'] = (
+                            "DMS: strain gauge value frozen at %d digits"
+                            " during the probe move - check the sensor"
+                            % (val,))
+                        completion.complete(True)
+                        return reactor.NEVER
+                else:
+                    state['same'] = 0
+                state['last'] = val
                 if abs(val - idle) >= delta:
                     state['run'].append((t, val))
                     if len(state['run']) >= self.contact_samples:
@@ -574,7 +593,9 @@ class RF2000DMS:
             self.pause_acc = []
         # Emergency stop: Z moving without extrusion and blocked
         if z_moving and not e_moving and (self.stop_min or self.stop_max):
-            self.stop_acc.append(val)
+            next_time = min(next_time, eventtime + self.stop_interval)
+            if fresh:
+                self.stop_acc.append(val)
             if len(self.stop_acc) >= self.stop_checks:
                 avg = sum(self.stop_acc) / float(len(self.stop_acc))
                 self.stop_acc = []

@@ -53,7 +53,8 @@ Going back is one command: `scripts/restore_original.sh`.
 | Milling mode | `RF_MODE`, Z-max homing, `M3`/`M5`, find Z origin, work part scan |
 | LCD 20x4 + 11 keys | `display` + `gcode_button`, RF2000v2 menu, hold-to-repeat keys, live Z |
 | RGB light, case light, 230 V, 2x 24 V FET, case fan, buzzer | `led`, `output_pin`, `controller_fan`, RF light effects |
-| Bed surface temperature compensation | `M140`/`M190` wrapper with the RF table |
+| Bed surface temperature compensation | `M140`/`M190` wrapper (optional, off like the official fw) |
+| Ditto printing, RF part-fan mapping, DMS digits on the LCD | `RF_DITTO`, `M106` wrapper, `display_data` |
 | RF M3xxx G-codes | compatibility macros |
 
 Full list and command reference: [docs/05-features.md](docs/05-features.md)
