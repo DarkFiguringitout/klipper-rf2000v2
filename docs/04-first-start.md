@@ -103,7 +103,7 @@ you have not changed the bed since):
 
 ```
 RF_EEPROM_INFO
-RF_IMPORT_HBS PROFILE=default
+RF_IMPORT_HBS            ; active slot; slot 1 becomes profile 'default'
 SAVE_CONFIG
 ```
 

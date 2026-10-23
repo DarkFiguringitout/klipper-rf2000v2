@@ -53,10 +53,6 @@ def config_getint_hex(config, option, default, minval, maxval):
     return val
 
 
-class DMSError(Exception):
-    pass
-
-
 class ADS1110:
     """Minimal driver for the ADS1100/ADS1110 on the RF hotend."""
     def __init__(self, config):
@@ -92,7 +88,7 @@ class ADS1110:
             params = self.i2c.i2c_read([], 3)
         resp = bytearray(params['response'])
         if len(resp) < 3:
-            raise DMSError("DMS: short I2C read")
+            raise self.printer.command_error("DMS: short I2C read")
         raw = (resp[0] << 8) | resp[1]
         if raw & 0x8000:
             raw -= 0x10000
@@ -124,7 +120,8 @@ class ADS1110:
                                  " sampling")
                     self.use_drdy = False
                     return val, t
-                raise DMSError("DMS: no new ADC sample (sensor stuck?)")
+                raise self.printer.command_error(
+                    "DMS: no new ADC sample (sensor stuck?)")
             self.reactor.pause(now + min(0.010,
                                          self.get_sample_period() / 4.))
 
@@ -143,6 +140,10 @@ class RF2000DMS:
         self.x_offset = config.getfloat('x_offset', 0.)
         self.y_offset = config.getfloat('y_offset', 0.)
         self.contact_delta = config.getint('contact_delta', 10, minval=1)
+        # RF fw averages 15 reads; require several consecutive new samples
+        # beyond contact_delta so a single noise spike can not trigger
+        self.contact_samples = config.getint('contact_samples', 2, minval=1,
+                                             maxval=10)
         self.release_delta = config.getint('release_delta', 5, minval=1)
         self.idle_samples = config.getint('idle_samples', 5, minval=1)
         self.idle_tolerance = config.getint('idle_tolerance', 15, minval=1)
@@ -157,8 +158,11 @@ class RF2000DMS:
         self.settle_time = config.getfloat('settle_time', 0.150, minval=0.)
         self.sample_delay = config.getfloat(
             'sample_delay', .5 * self.sensor.get_sample_period(), minval=0.)
+        # Abort a probe if the force after the fast approach exceeds this
+        # (too much overtravel - lower the probe speed)
         self.max_contact_digits = config.getint('max_contact_digits', 5000,
                                                 minval=1)
+        self.backoff_retries = config.getint('backoff_retries', 3, minval=0)
         self.z_min_position = probe.lookup_minimum_z(config)
         self.param_helper = probe.ProbeParameterHelper(config)
         self.probe_session = probe.SampleAveragingHelper(
@@ -189,8 +193,6 @@ class RF2000DMS:
         self.pause_acc = []
         self.stop_acc = []
         self.paused_by_dms = False
-        self.last_z = None
-        self.last_e = None
         # SenseOffset (M3909)
         self.so_max_digits = 0
         self.so_max_offset = config.getfloat('sense_offset_max', 0.180,
@@ -377,10 +379,11 @@ class RF2000DMS:
             z_target = self.z_min_position
         toolhead.wait_moves()
         completion = reactor.completion()
-        state = {'time': None, 'value': None, 'error': None}
+        state = {'time': None, 'value': None, 'error': None, 'run': [],
+                 'samples': 0, 'finished': False}
         poll_time = max(0.005, self.sensor.get_sample_period() / 4.)
         def poll(eventtime):
-            if completion.test():
+            if completion.test() or state['finished']:
                 return reactor.NEVER
             try:
                 val, fresh, t = self.read_value()
@@ -388,11 +391,27 @@ class RF2000DMS:
                 state['error'] = str(e)
                 completion.complete(True)
                 return reactor.NEVER
-            if fresh and abs(val - idle) >= delta:
-                state['time'] = t
-                state['value'] = val
-                completion.complete(True)
+            if state['finished']:
+                # the move ended while this read was in progress
                 return reactor.NEVER
+            if fresh:
+                state['samples'] += 1
+                if abs(val - idle) >= delta:
+                    state['run'].append((t, val))
+                    if len(state['run']) >= self.contact_samples:
+                        if state['samples'] == len(state['run']):
+                            # beyond the threshold since the first sample
+                            state['error'] = (
+                                "DMS probe triggered prior to movement"
+                                " (force %d, idle %.0f)" % (val, idle))
+                            completion.complete(True)
+                            return reactor.NEVER
+                        # contact time = first sample of the run
+                        state['time'], state['value'] = state['run'][0]
+                        completion.complete(True)
+                        return reactor.NEVER
+                else:
+                    state['run'] = []
             return eventtime + poll_time
         timer = reactor.register_timer(poll, reactor.NOW)
         pos = toolhead.get_position()
@@ -404,6 +423,7 @@ class RF2000DMS:
         try:
             toolhead.drip_move(pos, speed, completion)
         finally:
+            state['finished'] = True
             if not completion.test():
                 completion.complete(False)
             reactor.unregister_timer(timer)
@@ -428,10 +448,32 @@ class RF2000DMS:
             raise self.printer.command_error(
                 "DMS: no contact detected down to Z=%.3f"
                 % (self.z_min_position,))
-        # Back off and re-measure idle force
+        # Overtravel check: the flushed part of the drip move keeps running
+        # after the trigger, which presses the nozzle into the bed
+        peak, t = self.read_fresh()
+        if abs(peak - idle) > self.max_contact_digits:
+            pos = toolhead.get_position()
+            pos[2] = max(pos[2], z1) + self.backoff_dist
+            toolhead.manual_move(pos, params['lift_speed'])
+            raise self.printer.command_error(
+                "DMS: force %d digits after contact exceeds"
+                " max_contact_digits %d - lower the probe speed"
+                % (abs(peak - idle), self.max_contact_digits))
+        # Back off until the force is released and re-measure idle force
+        first_idle = idle
         pos = toolhead.get_position()
         pos[2] = max(pos[2], z1) + self.backoff_dist
         toolhead.manual_move(pos, params['lift_speed'])
+        for attempt in range(self.backoff_retries + 1):
+            val, t = self.read_fresh()
+            if abs(val - first_idle) < self.release_delta + self.idle_tolerance:
+                break
+            pos[2] += self.backoff_dist
+            toolhead.manual_move(pos, params['lift_speed'])
+        else:
+            raise self.printer.command_error(
+                "DMS: force not released after back-off (%d digits)"
+                % (val - first_idle,))
         idle = self.measure_idle()
         # Pass 2: slow approach
         z2, v2 = self.descend_until_contact(slow_speed, idle, contact_delta)
@@ -459,11 +501,11 @@ class RF2000DMS:
     def _handle_shutdown(self):
         if self.monitor_timer is not None:
             self.reactor.update_timer(self.monitor_timer, self.reactor.NEVER)
-    def _is_printing(self, eventtime):
+    def _print_state(self, eventtime):
         ps = self.printer.lookup_object('print_stats', None)
         if ps is None:
-            return False
-        return ps.get_status(eventtime)['state'] == 'printing'
+            return 'standby'
+        return ps.get_status(eventtime)['state']
     def _motion(self, eventtime):
         """Return (z_moving, e_moving, current_z) from the trapq history."""
         mr = self.printer.lookup_object('motion_report', None)
@@ -476,8 +518,15 @@ class RF2000DMS:
         th = mr.dtrapqs.get('toolhead')
         pos_now, v = th.get_trapq_position(pt)
         pos_old, v = th.get_trapq_position(pt - dt)
-        z_moving = (pos_now is not None and pos_old is not None
-                    and abs(pos_now[2] - pos_old[2]) > 1e-6)
+        z_moving = False
+        if pos_now is not None and pos_old is not None:
+            dz = abs(pos_now[2] - pos_old[2])
+            dxy = ((pos_now[0] - pos_old[0]) ** 2
+                   + (pos_now[1] - pos_old[1]) ** 2) ** .5
+            # Bed mesh corrections add small Z changes to XY moves (slopes
+            # of a few percent).  Like the RF fw (isZMove) only count moves
+            # that are mainly Z moves.
+            z_moving = dz > 1e-6 and dz >= 0.2 * dxy
         e_moving = False
         ename = toolhead.get_extruder().get_name()
         etq = mr.dtrapqs.get(ename)
@@ -506,7 +555,8 @@ class RF2000DMS:
         except Exception:
             logging.exception("rf2000_dms: monitor read failed")
             return eventtime + 1.
-        printing = self._is_printing(eventtime)
+        state = self._print_state(eventtime)
+        printing = state == 'printing'
         z_moving, e_moving, cur_z = self._motion(eventtime)
         # Emergency pause while printing
         if printing and (self.pause_min or self.pause_max):
@@ -540,8 +590,11 @@ class RF2000DMS:
             self._sense_offset_update(val, cur_z)
             self._flow_compensation_update(val, cur_z)
             self._pressure_control_update(val, cur_z, e_moving)
-        elif (self.so_applied or self.fc_base is not None
-              or self.pc_base is not None):
+        elif state != 'paused' and (self.so_applied
+                                    or self.fc_base is not None
+                                    or self.pc_base is not None):
+            # print finished/cancelled (a pause keeps the adjustments, RESUME
+            # restores the g-code state they are part of)
             self._reset_live_adjustments()
         return next_time
     def _sense_offset_update(self, val, cur_z):
@@ -558,7 +611,9 @@ class RF2000DMS:
         if new != self.so_applied:
             delta = new - self.so_applied
             self.so_applied = new
-            self._run_gcode_later("SET_GCODE_OFFSET Z_ADJUST=%.4f" % (delta,))
+            # MOVE=1: apply now, XY moves of the first layer carry no Z word
+            self._run_gcode_later("SET_GCODE_OFFSET Z_ADJUST=%.4f MOVE=1"
+                                  % (delta,))
     def _flow_compensation_update(self, val, cur_z):
         if not (self.fc_extrude or self.fc_speed) or self.fc_max <= self.fc_min:
             return
@@ -642,7 +697,7 @@ class RF2000DMS:
             self.pc_integral = 0.
             self.pc_factor = 1.
         if self.so_applied:
-            script.append("SET_GCODE_OFFSET Z_ADJUST=%.4f"
+            script.append("SET_GCODE_OFFSET Z_ADJUST=%.4f MOVE=1"
                           % (-self.so_applied,))
             self.so_applied = 0.
         if self.fc_base is not None:
@@ -693,10 +748,16 @@ class RF2000DMS:
             "enabled" if self.monitor_enabled else "disabled"))
     cmd_DMS_SET_LIMITS_help = "Set DMS emergency pause/stop digit limits"
     def cmd_DMS_SET_LIMITS(self, gcmd):
-        self.pause_max = gcmd.get_int('PAUSE_MAX', self.pause_max)
-        self.pause_min = gcmd.get_int('PAUSE_MIN', self.pause_min)
-        self.stop_max = gcmd.get_int('STOP_MAX', self.stop_max)
-        self.stop_min = gcmd.get_int('STOP_MIN', self.stop_min)
+        pmax = gcmd.get_int('PAUSE_MAX', self.pause_max, minval=1,
+                            maxval=32767)
+        pmin = gcmd.get_int('PAUSE_MIN', self.pause_min, minval=-32768,
+                            maxval=-1)
+        smax = gcmd.get_int('STOP_MAX', self.stop_max, minval=1,
+                            maxval=32767)
+        smin = gcmd.get_int('STOP_MIN', self.stop_min, minval=-32768,
+                            maxval=-1)
+        self.pause_min, self.pause_max = pmin, pmax
+        self.stop_min, self.stop_max = smin, smax
         gcmd.respond_info("DMS limits: pause %d..%d stop %d..%d" % (
             self.pause_min, self.pause_max, self.stop_min, self.stop_max))
     def _probe_at(self, gcmd, x, y, contact_delta=None):
@@ -789,6 +850,10 @@ class RF2000DMS:
                                        maxval=99.)
         if gcmd.get_int('OFF', 0):
             self.fc_extrude = self.fc_speed = 0.
+        if (self.fc_extrude or self.fc_speed) and self.pc_target:
+            self.pc_target = 0
+            gcmd.respond_info("DMS pressure control switched off (only one"
+                              " M220/M221 controller can be active)")
         if not (self.fc_extrude or self.fc_speed):
             self._reset_live_adjustments()
         gcmd.respond_info(
@@ -821,6 +886,11 @@ class RF2000DMS:
         if mode not in ('speed', 'flow', 'both'):
             raise gcmd.error("MODE must be speed, flow or both")
         self.pc_mode = mode
+        if self.pc_target and (self.fc_extrude or self.fc_speed):
+            self.fc_extrude = self.fc_speed = 0.
+            gcmd.respond_info("DMS flow compensation (M3911) switched off"
+                              " (only one M220/M221 controller can be"
+                              " active)")
         if not self.pc_target:
             self._reset_live_adjustments()
         gcmd.respond_info(
@@ -840,6 +910,9 @@ class RF2000DMS:
         start = toolhead.get_last_move_time()
         pos[3] += length
         toolhead.manual_move(pos, speed)
+        if mcu.is_fileoutput():
+            # batch/simulation mode: no clock to wait for, no sensor
+            return []
         end = toolhead.get_last_move_time()
         mid = start + 0.5 * (end - start)
         samples = []
@@ -908,15 +981,15 @@ class RF2000DMS:
         if temps[0] is not None:
             self.gcode.run_script_from_command(
                 "SET_HEATER_TEMPERATURE HEATER=%s TARGET=%.0f\n"
-                "TEMPERATURE_WAIT SENSOR=%s MINIMUM=%.0f" % (
-                    heater, temps[0], heater, temps[0] - 2.))
+                "TEMPERATURE_WAIT SENSOR=%s MINIMUM=%.0f MAXIMUM=%.0f" % (
+                    heater, temps[0], heater, temps[0] - 2., temps[0] + 2.))
         self.cmd_DMS_VISCOSITY_TEST(self.gcode.create_gcode_command(
             "DMS_VISCOSITY_TEST", "DMS_VISCOSITY_TEST", params))
         if temps[1] is not None and temps[1] != temps[0]:
             self.gcode.run_script_from_command(
                 "SET_HEATER_TEMPERATURE HEATER=%s TARGET=%.0f\n"
-                "TEMPERATURE_WAIT SENSOR=%s MINIMUM=%.0f" % (
-                    heater, temps[1], heater, temps[1] - 2.))
+                "TEMPERATURE_WAIT SENSOR=%s MINIMUM=%.0f MAXIMUM=%.0f" % (
+                    heater, temps[1], heater, temps[1] - 2., temps[1] + 2.))
             self.cmd_DMS_VISCOSITY_TEST(self.gcode.create_gcode_command(
                 "DMS_VISCOSITY_TEST", "DMS_VISCOSITY_TEST", params))
     def _extrude_until_force(self, gcmd, digits, speed, max_length, chunk):
@@ -956,9 +1029,16 @@ class RF2000DMS:
         try:
             self._extrude_until_force(gcmd, digits, 2., 20., 1.)
             toolhead = self._toolhead()
-            pos = toolhead.get_position()
-            pos[3] -= length
-            toolhead.manual_move(pos, gcmd.get_float('SPEED', 8.3, above=0.))
+            speed = gcmd.get_float('SPEED', 8.3, above=0.)
+            # E-only moves are limited by max_extrude_only_distance (50mm
+            # default) - retract in chunks
+            left = length
+            while left > 0.:
+                step = min(left, 40.)
+                pos = toolhead.get_position()
+                pos[3] -= step
+                toolhead.manual_move(pos, speed)
+                left -= step
             toolhead.wait_moves()
         finally:
             self.probing = max(0, self.probing - 1)

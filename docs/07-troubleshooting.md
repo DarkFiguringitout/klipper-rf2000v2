@@ -12,6 +12,8 @@
 | `ADC out of range` | A heater or sensor cable is unplugged or broken, or `[temperature_sensor X35]` is enabled without a sensor |
 | `DMS idle pressure not stable` | Filament or dirt touches the nozzle, cable of the strain gauge, or the printer vibrates (fan). `DMS_TEST`, clean the nozzle, increase `idle_tolerance` slightly |
 | `DMS idle pressure ... outside` | Run `DMS_TARE` with the nozzle free |
+| `force ... exceeds max_contact_digits` | The fast approach pressed too far into the bed: lower `speed` in `[rf2000_dms]` |
+| `DMS probe triggered prior to movement` | The nozzle already touched something when probing started (filament blob, bed too high). Clean the nozzle, start higher |
 | `DMS: no contact detected` | Bed out of reach (`position_min` of Z), strain gauge not connected (`DMS_READ` changes when you push the nozzle?) |
 | `i2c timeout` shutdown | Strain gauge / EEPROM I2C bus (X34) disconnected or shorted |
 | Emergency pause during a print | Force > ±15000 digits: clogged nozzle, nozzle too close to the bed, part came loose. `DMS_SET_LIMITS PAUSE_MAX=` to raise the limit |

@@ -30,11 +30,14 @@ class RF2000ZMax:
         self.second_speed = config.getfloat('second_homing_speed',
                                             self.speed / 10., above=0.)
         self.retract = config.getfloat('homing_retract_dist', 2., minval=0.)
-        self.leave_dist = config.getfloat('leave_distance', 2., minval=0.)
+        # must release the switch, otherwise the monitor would trip
+        self.leave_dist = config.getfloat('leave_distance', 2., minval=0.5)
         self.monitor = config.getboolean('monitor', True)
         self.monitor_interval = config.getfloat('monitor_interval', 0.5,
                                                 minval=0.1)
         self.homing_active = False
+        self.in_home_cmd = False
+        self.hits = 0
         self.timer = None
         printer.register_event_handler("klippy:ready", self._handle_ready)
         printer.register_event_handler("homing:homing_move_begin",
@@ -66,7 +69,8 @@ class RF2000ZMax:
     def _monitor(self, eventtime):
         if self.printer.is_shutdown():
             return self.reactor.NEVER
-        if self.homing_active:
+        if self.homing_active or self.in_home_cmd:
+            self.hits = 0
             return eventtime + self.monitor_interval
         toolhead = self.printer.lookup_object('toolhead')
         if 'z' not in toolhead.get_status(eventtime)['homed_axes']:
@@ -77,7 +81,9 @@ class RF2000ZMax:
         except Exception:
             logging.exception("rf2000_zmax: query failed")
             return eventtime + 5.
-        if hit and not self.homing_active:
+        # two consecutive hits: ignore a single bounce of the switch
+        self.hits = self.hits + 1 if hit else 0
+        if self.hits >= 2 and not (self.homing_active or self.in_home_cmd):
             self.printer.invoke_shutdown(
                 "Z-max endstop triggered outside of homing (bed crash"
                 " protection)")
@@ -90,6 +96,18 @@ class RF2000ZMax:
     cmd_HOME_Z_MAX_help = "Home Z towards the Z-max endstop"
     def cmd_HOME_Z_MAX(self, gcmd):
         toolhead = self.printer.lookup_object('toolhead')
+        self.in_home_cmd = True
+        try:
+            self._home_z_max(gcmd, toolhead)
+        except self.printer.command_error:
+            # do not leave Z "homed" at the fake start position
+            toolhead.get_kinematics().clear_homing_state("z")
+            raise
+        finally:
+            # the switch is released once the leave move has finished
+            toolhead.wait_moves()
+            self.in_home_cmd = False
+    def _home_z_max(self, gcmd, toolhead):
         phoming = self.printer.lookup_object('homing')
         kin = toolhead.get_kinematics()
         status = kin.get_status(self.reactor.monotonic())

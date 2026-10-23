@@ -346,7 +346,7 @@ class FakePrinter:
         return default
 
 
-def make_dms(surface=-0.25, k=4000., speed=1.0):
+def make_dms(surface=-0.25, k=4000., speed=0.5):
     reactor = FakeReactor()
     bed = FakeBed(reactor, surface=surface, k=k)
     bed.note()
@@ -357,6 +357,10 @@ def make_dms(surface=-0.25, k=4000., speed=1.0):
     dms.sensor = FakeSensor(bed)
     dms.tare = 0
     dms.contact_delta = 10
+    dms.contact_samples = 2
+    dms.release_delta = 5
+    dms.max_contact_digits = 5000
+    dms.backoff_retries = 3
     dms.idle_samples = 5
     dms.idle_tolerance = 15
     dms.idle_retries = 5
@@ -398,6 +402,40 @@ class TestDMSProbe(unittest.TestCase):
         th.manual_move([None, None, 1.0], 5.)
         with self.assertRaises(RuntimeError):
             dms.probe_contact(FakeGCmd())
+
+    def test_single_noise_spike_does_not_trigger(self):
+        dms, bed, th = make_dms(surface=-0.3)
+        th.manual_move([None, None, 1.0], 5.)
+        orig = bed.value_at
+        spikes = {'n': 0}
+        def spiky(t):
+            val, st = orig(t)
+            # one isolated +40 digit spike every 9th sample
+            spikes['n'] += 1
+            if spikes['n'] % 9 == 0 and bed.z > 0.2:
+                val += 40
+            return val, st
+        bed.value_at = spiky
+        z, idle, val = dms.probe_contact(FakeGCmd())
+        self.assertAlmostEqual(z, -0.3 - 10. / bed.k, delta=0.01)
+
+    def test_triggered_before_movement(self):
+        dms, bed, th = make_dms(surface=2.0)  # nozzle already pressed
+        th.manual_move([None, None, 1.0], 5.)
+        dms.idle_min, dms.idle_max = -100000, 100000
+        dms.last_idle = 0.
+        with self.assertRaises(RuntimeError) as cm:
+            dms.descend_until_contact(1.0, bed.idle, 10)
+        self.assertIn("prior to movement", str(cm.exception))
+
+    def test_overtravel_force_limit(self):
+        # very stiff gauge + fast approach -> force far above the limit
+        dms, bed, th = make_dms(surface=-0.2, k=200000., speed=2.0)
+        th.manual_move([None, None, 1.0], 5.)
+        with self.assertRaises(RuntimeError) as cm:
+            dms.probe_contact(FakeGCmd())
+        self.assertIn("max_contact_digits", str(cm.exception))
+        self.assertGreater(th.get_position()[2], -0.2)  # lifted again
 
     def test_unstable_idle_raises(self):
         dms, bed, th = make_dms()

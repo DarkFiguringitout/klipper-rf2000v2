@@ -14,7 +14,7 @@ G-code macros in `config/rf2000v2/macros/`.
 | Align extruders (M3309) | Macro + DMS | `RF_ALIGN_EXTRUDERS` |
 | T1 Z offset (M3919) | Macro | `SET_TOOL_OFFSET`, `M3919 S<um>` |
 | Heat bed scan / Z compensation (M3010, M3000/M3001) | Native `bed_mesh` + Extra `rf2000_dms.py` probe | `BED_MESH_CALIBRATE` |
-| Import existing HBS matrices from the EEPROM | Extra `rf2000_eeprom.py` | `RF_EEPROM_INFO`, `RF_IMPORT_HBS` |
+| Import existing HBS matrices from the EEPROM | Extra `rf2000_eeprom.py` | `RF_EEPROM_INFO`, `RF_IMPORT_HBS [SLOT=n] [PROFILE=]` (slot 1 → profile `default`, slot n → `hbs_n`, as `M3009`/`M3001`) |
 | Z offset scan (M3900) | Extra | `DMS_Z_OFFSET_SCAN` |
 | Static Z offset (M3006) | Native | `SET_GCODE_OFFSET Z` |
 | Emergency pause on high force (M3075) | Extra | DMS monitor while printing |
@@ -57,9 +57,13 @@ nozzle in "digits" (ADC counts). The module registers itself as Klipper's
 How a probe works:
 
 1. measure the idle force (5 samples, spread must be < `idle_tolerance`),
-2. move down continuously at `speed` (1 mm/s) until the force rises by
-   `contact_delta` digits (10, as in the RF firmware),
-3. lift by `backoff_distance` and measure the idle force again,
+2. move down continuously at `speed` (0.5 mm/s) until the force is at
+   least `contact_delta` digits (10, as in the RF firmware) above idle for
+   `contact_samples` (2) consecutive ADC samples, so a single noise spike
+   can not trigger. A trigger before the move started is an error,
+3. check that the force after the approach stays below
+   `max_contact_digits` (overtravel protection), lift by `backoff_distance`
+   until the force is released and measure the idle force again,
 4. move down at `slow_speed` (0.05 mm/s) until contact again,
 5. take the Z position at the moment the triggering ADC sample was taken,
    from the stepper history, then lift `release_distance`.
@@ -93,7 +97,8 @@ Extra parameters for probe commands: `CONTACT_DELTA=<digits>`,
 * **Emergency pause:** while printing, the average of 10 samples (1 s)
   outside ±15000 digits runs `PAUSE` (e.g. nozzle clogged, part knocked
   over, nozzle digging into the print).
-* **Emergency stop:** when Z moves without extrusion (homing, bed moves)
+* **Emergency stop:** when Z moves without extrusion (homing, bed moves;
+  small Z changes from the bed mesh during XY moves do not count)
   and the average of 3 samples is outside ±5000 digits, Klipper shuts down
   (bed blocked).
 
@@ -124,7 +129,9 @@ that pressure directly. Three ways to use it:
 3. **RF-style open loop (M3911):** reduce flow and/or speed proportionally
    between `MIN_DIGITS` and `MAX_DIGITS`, as in the community firmware.
 
-Use either 2 or 3, not both. Run `DMS_TARE` at printing temperature first
+Only one of 2 and 3 can be active: enabling one switches the other off.
+While paused the adjustments are kept (RESUME restores the g-code state
+they belong to); they are removed when the print ends or is cancelled. Run `DMS_TARE` at printing temperature first
 (`PRINT_START` does that).
 
 ## DRV8711 (`[drv8711 <stepper>]`)
@@ -154,7 +161,9 @@ Config options: `torque`, `run_current` + `sense_resistor`,
 * `RF_ALIGN_EXTRUDERS [X= Y=]` measures the T1 Z offset with the strain
   gauge.
 * The bed mesh is always applied under the active nozzle
-  (`BED_MESH_OFFSET`).
+  (`BED_MESH_OFFSET`), also after `BED_MESH_PROFILE LOAD`,
+  `RF_IMPORT_HBS` or a calibration while T1 is active.
+  `BED_MESH_CALIBRATE` always probes with T0 and switches back afterwards.
 * Each extruder has its own PID, pressure advance, rotation distance and
   current; `M104 T1 S..` / `M109 T1 S..` work as slicers expect.
 

@@ -187,7 +187,11 @@ class RF2000EEPROM:
         yc = gcmd.get_int('Y_COUNT', self.profile_y_count or len(ys),
                           minval=3, maxval=50)
         min_x, max_x, min_y, max_y, matrix = resample(xs, ys, zmm, xc, yc)
-        name = gcmd.get('PROFILE', 'rf_hbs_%d' % (slot,))
+        # same names as M3009 / M3001: slot 1 = "default", n = "hbs_n"
+        default_name = 'default' if slot == 1 else 'hbs_%d' % (slot,)
+        if base:
+            default_name = 'workpart' if slot == 1 else 'workpart_%d' % (slot,)
+        name = gcmd.get('PROFILE', default_name)
         bed_mesh = self.printer.lookup_object('bed_mesh', None)
         if bed_mesh is None:
             raise gcmd.error("[bed_mesh] must be configured")
