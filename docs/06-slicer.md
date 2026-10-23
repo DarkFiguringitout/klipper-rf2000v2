@@ -37,7 +37,7 @@ PRINT_START BED={material_bed_temperature_layer_0} EXTRUDER={material_print_temp
 Set an unused extruder temperature to 0 and it stays cold.
 
 Optional `PRINT_START` parameters: `MESH=load|scan|none`, `PROFILE=default`,
-`Z_OFFSET_SCAN=0/1`. The defaults are in the `PRINT_START` macro
+`Z_OFFSET_SCAN=0/1`, `MONITOR=0/1` (DMS emergency monitor during the print). The defaults are in the `PRINT_START` macro
 (`config/rf2000v2/macros/print.cfg`).
 
 ## End G-code

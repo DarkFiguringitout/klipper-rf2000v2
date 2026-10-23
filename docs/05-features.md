@@ -132,6 +132,11 @@ that pressure directly. Three ways to use it:
 3. **RF-style open loop (M3911):** reduce flow and/or speed proportionally
    between `MIN_DIGITS` and `MAX_DIGITS`, as in the community firmware.
 
+Only one of 2 and 3 can be active: enabling one switches the other off.
+While paused the adjustments are kept (RESUME restores the g-code state
+they belong to); they are removed when the print ends or is cancelled. Run `DMS_TARE` at printing temperature first
+(`PRINT_START` does that).
+
 ### I2C errors
 
 Klipper's AVR I2C driver shuts the MCU down on any bus error (timeout,
@@ -142,11 +147,6 @@ your printer, fix the cable/connector, or print without the in-print
 monitor: `PRINT_START ... MONITOR=0` (or `monitor: False` in
 `[rf2000_dms]`). You then lose the emergency pause, SenseOffset, flow and
 pressure control during that print; probing still works.
-
-Only one of 2 and 3 can be active: enabling one switches the other off.
-While paused the adjustments are kept (RESUME restores the g-code state
-they belong to); they are removed when the print ends or is cancelled. Run `DMS_TARE` at printing temperature first
-(`PRINT_START` does that).
 
 ## DRV8711 (`[drv8711 <stepper>]`)
 
@@ -193,7 +193,8 @@ work part, `RF_WORK_PART_SCAN` scans the work part surface into the
 ## Ditto printing
 
 `RF_DITTO S=1` makes T1 extrude exactly like T0, so two copies are printed
-33.6 mm apart (heat both nozzles). Slice a single-extruder print that fits
+33.6 mm apart (heat both nozzles - T1's minimum extrusion temperature is
+not checked while it is synced). Any `T0`/`T1` ends ditto mode. Slice a single-extruder print that fits
 into X 0..136 and is narrower than about 30 mm. `RF_DITTO S=0` ends it.
 
 ## Lights and outputs

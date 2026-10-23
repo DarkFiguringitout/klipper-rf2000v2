@@ -13,6 +13,8 @@ for f in "$REPO_DIR"/klippy_extras/*.py; do
 done
 check "config rf2000v2/ present" "[ -e '$CONFIG_DIR/rf2000v2/hardware.cfg' ]"
 check "printer.cfg includes rf2000v2" "grep -q 'include rf2000v2/hardware.cfg' '$CONFIG_DIR/printer.cfg' 2>/dev/null"
+check "printer.cfg has [stepper_z] position_endstop (template >= v2)" "grep -qE '^(#\*# )?position_endstop' '$CONFIG_DIR/printer.cfg' 2>/dev/null"
+check "printer.cfg has heater 'control:' (template >= v2)" "grep -qE '^(#\*# )?control' '$CONFIG_DIR/printer.cfg' 2>/dev/null"
 check "printer.cfg serial is set" "! grep -q 'REPLACE_ME' '$CONFIG_DIR/printer.cfg' 2>/dev/null"
 port="$(grep -m1 '^serial:' "$CONFIG_DIR/printer.cfg" 2>/dev/null | awk '{print $2}')"
 check "serial port $port exists" "[ -n '$port' ] && [ -e '$port' ]"

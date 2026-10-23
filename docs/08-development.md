@@ -87,6 +87,9 @@ need confirming on real hardware; please report results in an issue:
 * whether the part fan tolerates 100 % (the RF fw allows it for S255)
 * reliability of the strain gauge I2C over the carriage cable (Klipper
   shuts down on any I2C error, see docs/05)
+* the `frozen_samples` threshold (75 identical readings = 5 s at 15 SPS
+  aborts a probe move as "value frozen"; raise it if a very quiet gauge
+  triggers it)
 * DRV8711 register retention through enable (nSLEEP) cycles - the RF
   firmware relies on it as well
 

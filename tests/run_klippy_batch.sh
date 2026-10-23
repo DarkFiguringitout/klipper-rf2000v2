@@ -33,6 +33,21 @@ done
 
 # Copy the config so SAVE_CONFIG style writes never touch the repo
 cp -r "$REPO/config" "$WORK/config"
+# Test-only assertion macros (an error makes Klippy exit non-zero)
+cat > "$WORK/config/test_asserts.cfg" <<'EOF2'
+[gcode_macro ASSERT_NOT_DITTO]
+gcode:
+  {% if printer.extruder1.motion_queue == "extruder" %}
+    {action_raise_error("ASSERT: extruder1 still synced to extruder")}
+  {% endif %}
+
+[gcode_macro ASSERT_DITTO]
+gcode:
+  {% if printer.extruder1.motion_queue != "extruder" %}
+    {action_raise_error("ASSERT: extruder1 not synced (ditto off)")}
+  {% endif %}
+EOF2
+sed -i '0,/^\[include rf2000v2\/hardware.cfg\]/s//[include test_asserts.cfg]\n&/' "$WORK/config/printer.cfg"
 # Give the test copy a saved bed mesh profile (as SAVE_CONFIG would write)
 cat >> "$WORK/config/printer.cfg" <<'EOF2'
 #*# [bed_mesh default]

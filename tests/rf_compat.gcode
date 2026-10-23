@@ -74,3 +74,10 @@ RF_DITTO S=1
 M83
 G1 E2 F300
 RF_DITTO S=0
+; a tool change must end ditto mode (both nozzles would stop extruding)
+RF_DITTO S=1
+ASSERT_DITTO
+T1
+ASSERT_NOT_DITTO
+G1 E1 F300
+T0

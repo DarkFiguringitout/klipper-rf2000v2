@@ -189,7 +189,7 @@ class RF2000DMS:
         self.stop_interval = config.getfloat('emergency_stop_interval', 0.050,
                                              minval=0.020)
         # identical ADC values in a row while descending = frozen sensor
-        self.frozen_samples = config.getint('frozen_samples', 30, minval=5)
+        self.frozen_samples = config.getint('frozen_samples', 75, minval=5)
         # Monitor
         self.monitor_interval = config.getfloat('monitor_interval', 0.100,
                                                 minval=0.020)

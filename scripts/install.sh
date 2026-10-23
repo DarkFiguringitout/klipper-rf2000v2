@@ -180,8 +180,22 @@ set_serial() {
 }
 
 # ---------------------------------------------------------------------
+check_template() {
+    # Since the SAVE_CONFIG fix the calibratable options live in printer.cfg
+    local cfg="$CONFIG_DIR/printer.cfg"
+    [ -f "$cfg" ] || return 0
+    if ! grep -qE '^(#\*# )?position_endstop' "$cfg" \
+       || ! grep -qE '^(#\*# )?control' "$cfg"; then
+        warn "Your printer.cfg is from an older version of this project."
+        warn "Copy the [stepper_z], [rf2000_dms], [extruder], [extruder1] and"
+        warn "[heater_bed] sections from $REPO_DIR/config/printer.cfg into it,"
+        warn "otherwise Klipper will not start (docs/07-troubleshooting.md)."
+    fi
+}
+
 if [ $UPDATE -eq 1 ]; then
     link_extras
+    check_template
     restart_service klipper
     info "Updated. If the release notes mention firmware changes run"
     info "scripts/build_firmware.sh && scripts/flash_mcu.sh"
