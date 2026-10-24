@@ -25,7 +25,7 @@ twice.
 | Arc fitting / G2-G3 | Print settings > Advanced | `[gcode_arcs]` is enabled: smaller files, smoother curves |
 | Use relative E distances | Printer > General | what the macros expect (`M83`) |
 | Use firmware retraction (optional) | Printer > General | retraction tunable live from Mainsail (`SET_RETRACTION`) |
-| Max volumetric speed | Filament | from `DMS_VISCOSITY_TEST` (or ~8 mm³/s for PLA as a start) |
+| Max volumetric speed | Filament | from `DMS_VISCOSITY_TEST`; measured on the test printer (V3 hotend, PLA 210 C): flat back pressure up to 12 mm³/s, rising from 13 - use **12 mm³/s** |
 
 Pressure advance belongs into Klipper (`docs/04` step 10b), not into the
 slicer.
@@ -64,6 +64,12 @@ the tested printer.
 ```
 PRINT_END
 ```
+
+A clogged nozzle shows up in the same test: back pressure at 0.5 mm/s
+(1.2 mm³/s) was 4166 digits on a partly clogged T0 and 242 digits after
+four 6 mm purges at 240 C (PLA). Run
+`DMS_VISCOSITY_TEST START=0.5 END=0.6 STEP=1 LENGTH=6` hot to check a nozzle;
+a few hundred digits is normal.
 
 ## Pressure control during the print (optional)
 
