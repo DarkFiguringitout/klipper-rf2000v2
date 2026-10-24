@@ -18,6 +18,6 @@ info "Compiling"
 make -C "$KLIPPER_DIR" -j"$(nproc)"
 
 [ -f "$FIRMWARE_HEX" ] || die "build failed, $FIRMWARE_HEX missing"
-avr-size --mcu=atmega2560 -C "$KLIPPER_DIR/out/klipper.elf" | grep -E "Program|Data"
+avr-size --format=avr --mcu=atmega2560 "$KLIPPER_DIR/out/klipper.elf" | grep -E "Program|Data"
 info "Firmware ready: $FIRMWARE_HEX"
 info "Flash it with: scripts/flash_mcu.sh"

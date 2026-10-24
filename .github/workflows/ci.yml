@@ -55,7 +55,7 @@ jobs:
           cp firmware/rf2000v2.config ../klipper/.config
           make -C ../klipper olddefconfig
           make -C ../klipper -j"$(nproc)"
-          avr-size --mcu=atmega2560 -C ../klipper/out/klipper.elf
+          avr-size --format=avr --mcu=atmega2560 ../klipper/out/klipper.elf
           mkdir -p artifact
           cp ../klipper/out/klipper.elf.hex artifact/klipper-rf2000v2.hex
           git -C ../klipper describe --always --tags > artifact/klipper-version.txt
