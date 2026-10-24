@@ -16,8 +16,7 @@ scripts.
 > Every function that a sensor can confirm was tested on that printer and
 > the bugs found there were fixed - see
 > [08-development.md](docs/08-development.md#verified-on-a-real-rf2000v2).
-> LCD, all 11 keys, RGB light and buzzer were also confirmed at the printer.
-> The case light output (OUT1) is untested: no lamp fitted on that printer. Run the self-test
+> LCD, all 11 keys, RGB light and buzzer were also confirmed at the printer. Run the self-test
 > ([09-hardware-validation.md](docs/09-hardware-validation.md)) on your
 > printer and report the results.
 

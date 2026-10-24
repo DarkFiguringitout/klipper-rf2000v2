@@ -97,7 +97,7 @@ sensor or register readback:
 | LCD | two random codes sent with M117 were read back correctly at the printer |
 | RGB light | red, green and blue channels confirmed at the printer |
 | Buzzer | 3 beeps from M300 heard at the printer |
-| Case light output (OUT1) | switches, but the tested printer has no lamp on it (no visible effect) |
+| OUT1 lamp output | the RF2000v2 has no case lamp (`FEATURE_CASE_LIGHT 0` in the official firmware); the RIGHT key now switches the RGB light instead |
 | Mill mode | G28 homes Z to Z-max, M3/M5 switch the 230 V socket, back to print mode homes Z-min |
 | Tool change / ditto | T1 shifts the carriage 33.6 mm and applies the T1 z offset; RF_DITTO syncs extruder1 |
 | Pause / resume | park +45/+50/+2 mm, extruder torque 90 -> 32 while paused, resume returns to the exact position |
@@ -118,8 +118,7 @@ clean the nozzles before probing.
 ## What could not be tested without the printer
 
 Status after the first hardware run: everything in the table above is
-confirmed; the list below is kept for reference. Still open: long-print I2C reliability, and the case light (no lamp on
-OUT1 of the tested printer).
+confirmed; the list below is kept for reference. Still open: long-print I2C reliability.
 
 
 The original list from before the first hardware run, with the result

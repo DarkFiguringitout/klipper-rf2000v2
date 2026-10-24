@@ -32,7 +32,7 @@ G-code macros in `config/rf2000v2/macros/`.
 | 24V FET outputs (M3300) | Native `output_pin` | `SET_FET P=1 S=1` |
 | Case fan (M3120/M3121) | Native `controller_fan` | automatic |
 | RGB light effects (M3303-M3308) | Native `led` + macro | `RGB_LIGHT MODE=AUTO` |
-| Case light | Native `led` | `SET_LED LED=case_light WHITE=1` |
+| Lamp on OUT1 (optional, not fitted on a stock RF2000v2) | Native `led` | `SET_LED LED=case_light WHITE=1`, `M355` |
 | Heat bed temperature compensation | Macro | `M140`/`M190` wrapper, off by default (the official fw table is an identity), community table selectable |
 | Part fan PWM mapping (S1..254 → 90..193, S255 → full) | Macro | `M106` wrapper |
 | Ditto printing (FEATURE_DITTO_PRINTING) | Native + macro | `RF_DITTO S=1/0` (`SYNC_EXTRUDER_MOTION`) |
@@ -202,7 +202,9 @@ into X 0..136 and is narrower than about 30 mm. `RF_DITTO S=0` ends it.
 * `RGB_LIGHT MODE=OFF|WHITE|AUTO|MANUAL [R= G= B=]`. AUTO uses red while
   heating, white while printing, blue while cooling and white when idle.
   Colors via `M3303`-`M3307`.
-* `SET_LED LED=case_light WHITE=0..1`, or the RIGHT key.
+* The RIGHT key switches the RGB light off and back to its last mode.
+* `SET_LED LED=case_light WHITE=0..1` / `M355` drive OUT1 for a retrofitted
+  lamp (the stock RF2000v2 has none).
 * `SET_MAINS_OUTPUT S=0/1` (230 V), `SET_FET P=1|2 S=0/1` (X42/X44).
 * `M300 P<ms>` beeps.
 * `M106 S<0..255>` uses the RF part fan mapping: S1..254 → PWM 35-76 %

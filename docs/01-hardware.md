@@ -83,7 +83,7 @@ DECAY `0x4430`, STALL `0x583C`, DRIVE `0x60F0`, TORQUE `0x11xx`.
 | Case fan (X45) | PF4 | OUT5/FET3, `[controller_fan case_fan]` |
 | FET1 X42 / FET2 X44 | PC4 / PC5 | `[output_pin fet1_x42]`, `[output_pin fet2_x44]` |
 | 230V output | PE5 | `[output_pin output_230v]` |
-| Case light | PA3 | `[led case_light]` |
+| OUT1 (optional lamp) | PA3 | `[led case_light]` - no lamp on a stock RF2000v2 (`FEATURE_CASE_LIGHT 0` in the official firmware) |
 | RGB red / green / blue | PH3 / PH4 / PH5 | `[led rgb]`, hardware PWM |
 | Buzzer | PE3 | `[output_pin beeper]`, `M300` |
 | Watchdog WDI | PA7 | left floating (TPS3823 then disables itself), optional `[pwm_tool rf2000_watchdog]` |
