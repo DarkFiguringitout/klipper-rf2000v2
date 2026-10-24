@@ -339,6 +339,10 @@ class RF2000DMS:
         return abs(val - idle) >= self.contact_delta
     # Probing implementation
     def measure_idle(self):
+        # Queued moves must have finished: acceleration loads the hotend
+        # holder (10-30 digits on a real RF2000v2), which made every probe
+        # fail with "triggered prior to movement"
+        self._toolhead().wait_moves()
         reactor = self.reactor
         reactor.pause(reactor.monotonic() + self.settle_time)
         for attempt in range(self.idle_retries + 1):
@@ -742,6 +746,7 @@ class RF2000DMS:
             self.tare = 0
         else:
             count = gcmd.get_int('SAMPLES', 8, minval=1)
+            self._toolhead().wait_moves()
             vals = [self.sensor.read_fresh()[0] for i in range(count)]
             self.tare = int(round(sum(vals) / float(count)))
         gcmd.respond_info("DMS: tare offset %d digits" % (self.tare,))
