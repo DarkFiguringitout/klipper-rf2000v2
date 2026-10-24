@@ -95,4 +95,85 @@ Klipper itself is not changed. The extras are added as untracked files and
 listed in `.git/info/exclude`, so the Moonraker update manager does not
 report Klipper as "dirty".
 
+## Optional add-ons (tested on the RF2000v2 Pi)
+
+### Spoolman - filament tracking
+
+Tracks the remaining filament of every spool; Mainsail shows a spool
+selector and subtracts what each print uses.
+
+```
+mkdir ~/Spoolman && cd ~/Spoolman
+curl -sLO https://github.com/Donkie/Spoolman/releases/latest/download/spoolman.zip
+unzip -q spoolman.zip && cp .env.example .env
+bash scripts/install.sh -systemd=yes
+# Moonraker only manages lower-case unit names: rename the service
+sudo systemctl disable --now Spoolman
+sudo mv /etc/systemd/system/Spoolman.service /etc/systemd/system/spoolman.service
+sudo systemctl daemon-reload && sudo systemctl enable --now spoolman
+echo spoolman >> ~/printer_data/moonraker.asvc
+```
+
+Add to `~/printer_data/config/moonraker.conf`, then `sudo systemctl restart moonraker`:
+
+```
+[spoolman]
+server: http://127.0.0.1:7912
+sync_rate: 5
+
+[update_manager spoolman]
+type: zip
+channel: stable
+repo: Donkie/Spoolman
+path: ~/Spoolman
+virtualenv: .venv
+requirements: requirements.txt
+persistent_files:
+  .venv
+  .env
+managed_services: spoolman
+```
+
+Spoolman's web UI is at `http://<pi>:7912` (the database lives in
+`~/.local/share/spoolman` and survives updates).
+
+### Mobileraker - phone app with push notifications
+
+Write `~/printer_data/config/mobileraker.conf` first, then the installer
+runs without questions:
+
+```
+[general]
+language: en
+timezone: Europe/Berlin
+eta_format: %%d.%%m.%%Y, %%H:%%M:%%S
+include_snapshot: False
+
+[printer RF2000]
+moonraker_uri: ws://127.0.0.1:7125/websocket
+moonraker_api_key: False
+```
+
+```
+git clone https://github.com/Clon1998/mobileraker_companion.git ~/mobileraker_companion
+~/mobileraker_companion/scripts/install.sh
+```
+
+Update manager entry for `moonraker.conf`:
+
+```
+[update_manager mobileraker]
+type: git_repo
+path: ~/mobileraker_companion
+origin: https://github.com/Clon1998/mobileraker_companion.git
+primary_branch: main
+managed_services: mobileraker
+env: ~/mobileraker-env/bin/python
+requirements: scripts/mobileraker-requirements.txt
+install_script: scripts/install.sh
+```
+
+Then install the Mobileraker app on the phone and add the printer with the
+Pi's address (same Wi-Fi). Notifications are configured in the app.
+
 Next: [3. Flash the printer](03-flash-printer.md)
