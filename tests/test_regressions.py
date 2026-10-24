@@ -107,8 +107,7 @@ class TestConfigGuards(unittest.TestCase):
         # DMS emergency stop (7710 digits) on the first real print
         pc = open(os.path.join(REPO, "config/rf2000v2/macros/print.cfg")).read()
         purge = pc[pc.index("[gcode_macro _RF_PURGE]"):]
-        purge = purge[:purge.index("
-[")]
+        purge = purge[:purge.index("\n[")]
         self.assertLess(purge.index("G1 E-2"), purge.index("G1 Z1.0"))
         dms = open(os.path.join(REPO, "config/rf2000v2/dms.cfg")).read()
         self.assertRegex(dms, r"(?m)^emergency_stop_holdoff: [1-9]")
