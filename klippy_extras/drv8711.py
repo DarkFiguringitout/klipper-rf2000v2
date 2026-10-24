@@ -41,6 +41,7 @@ FAULT_MASK = 0x1f
 MICROSTEP_MODES = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6, 128: 7,
                    256: 8}
 VREF = 2.75
+RESET_PULSE_TIME = 0.100
 
 
 def config_getint_hex(config, option, default, minval, maxval):
@@ -93,7 +94,12 @@ class DRV8711ResetHelper:
         self.reactor = printer.get_reactor()
         self.drivers = []
         self.reset_pin = None
-        self.reset_time = 0.005
+        # The "off" command is only sent once the MCU reaches the "on" time
+        # (minclock), so a pulse shorter than the serial round trip can
+        # arrive after its own deadline -> "Timer too close" shutdown (1 of
+        # 8 restarts with 5 ms on a real RF2000v2).  Klipper keeps host
+        # scheduled pin changes >= 100 ms apart for the same reason.
+        self.reset_time = RESET_PULSE_TIME
         printer.register_event_handler("klippy:connect", self._handle_connect)
     def setup_reset_pin(self, config, pin_desc):
         if self.reset_pin is not None:
@@ -104,8 +110,9 @@ class DRV8711ResetHelper:
         self.reset_pin.setup_max_duration(0.)
         # Reset is active high - keep it released
         self.reset_pin.setup_start_value(0, 0)
-        self.reset_time = config.getfloat('reset_pulse_time', 0.005,
-                                          minval=0.001, maxval=0.100)
+        self.reset_time = config.getfloat('reset_pulse_time',
+                                          RESET_PULSE_TIME, minval=0.050,
+                                          maxval=0.500)
     def register_driver(self, driver):
         self.drivers.append(driver)
     def _pulse_reset(self):

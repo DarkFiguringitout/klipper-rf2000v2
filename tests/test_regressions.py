@@ -71,6 +71,13 @@ class TestFix2FaultStatus(unittest.TestCase):
         self.assertEqual(d.get_status()['faults'], ['OTS', 'AOCP'])
 
 
+# --- DRV8711 reset pulse must outlast the serial round trip ----------
+class TestResetPulse(unittest.TestCase):
+    def test_reset_pulse_long_enough(self):
+        # 5 ms caused "Timer too close" on 1 of 8 FIRMWARE_RESTARTs
+        self.assertGreaterEqual(drv8711.RESET_PULSE_TIME, 0.1)
+
+
 # --- fix 1/4/5: configuration and script guards ---------------------------
 def section(text, name):
     m = re.search(r'^\[%s\]\n(.*?)(?=^\[|\Z)' % re.escape(name), text,
