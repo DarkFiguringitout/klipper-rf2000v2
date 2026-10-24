@@ -100,6 +100,8 @@ sensor or register readback:
 | OUT1 lamp output | the RF2000v2 has no case lamp (`FEATURE_CASE_LIGHT 0` in the official firmware); the RIGHT key now switches the RGB light instead |
 | Mill mode | G28 homes Z to Z-max, M3/M5 switch the 230 V socket, back to print mode homes Z-min |
 | Tool change / ditto | T1 shifts the carriage 33.6 mm and applies the T1 z offset; RF_DITTO syncs extruder1 |
+| First layer height | after a failed print: full start sequence hot (bed 60 C, T0 225 C), then lowering the nozzle in 0.01 mm steps - first touch between g-code Z 0.00 and -0.01 at the bed centre and at the front edge, so a 0.20 mm first layer prints at 0.20 mm |
+| Probe repeatability | 25 digits / 3 samples: std dev 0.0011-0.0016 mm at three bed positions, contact stiffness 3700-11700 digits/mm, 117-point mesh without a single false trigger |
 | Pause / resume | park +45/+50/+2 mm, extruder torque 90 -> 32 while paused, resume returns to the exact position |
 
 Bugs found on the printer and fixed: (1) `avr-size -C` missing on Debian
@@ -108,6 +110,14 @@ with the Z-max monitor shut Klipper down, (4) X travel 200 -> 170,
 (5) RF PID start values far off, (6) strain gauge idle measured during
 moves made every probe fail, (7) the 5 ms DRV8711 reset pulse caused
 "Timer too close" on 1 of 8 restarts (now 100 ms, 16/16 restarts OK).
+A first real print came out too high and did not stick. Found and fixed
+on the printer: (8) the purge line ran at Y 5 but the mesh started at
+Y 30, where the bed is ~0.1 mm higher - mesh_min is now Y 5; (9) the
+gauge zero shifts ~30 digits after each contact (holder friction), which
+made the RF fw threshold of 10 digits over 2 samples fire falsely and
+failed the probe back-off - now 25 digits over 3 samples, a drift-proof
+release check, and a rigid-contact check that rejects soft contacts
+(plastic blob) with one automatic retry.
 A code review afterwards found and fixed: the mill work part scan height
 (would have driven the bed into a thick work part), probe back-off timing,
 long pauses hitting idle_timeout, the idle timeout not stopping the mill
