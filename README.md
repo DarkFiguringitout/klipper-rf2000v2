@@ -11,13 +11,15 @@ Klipper is not forked. The RF2000v2 support is a set of Klipper modules
 (`klippy_extras/`), a machine profile (`config/`) and install / flash
 scripts.
 
-> **Status:** built from the official Conrad RF2000v2 firmware sources and
-> datasheets, and verified in simulation against Klipper master (pin map,
-> driver registers, firmware build, Klippy batch tests, probe simulation).
-> It has **not yet been run on a physical RF2000v2**. Read
-> [08-development.md](docs/08-development.md#what-could-not-be-tested-without-the-printer)
-> and follow the first-start checklist carefully. Feedback from real
-> printers is very welcome.
+> **Status:** running on a physical RF2000v2 (Raspberry Pi 5, Raspberry Pi
+> OS 13 / Debian trixie, Klipper master v0.13.0-816) since 2026-10-24.
+> Every function that a sensor can confirm was tested on that printer and
+> six bugs found there were fixed - see
+> [08-development.md](docs/08-development.md#verified-on-a-real-rf2000v2).
+> Still unconfirmed (needs a person at the printer): LCD content, the 11
+> keys, RGB/case light colours, buzzer, part fan spin. Run the self-test
+> ([09-hardware-validation.md](docs/09-hardware-validation.md)) on your
+> printer and report the results.
 
 ## Quick start
 

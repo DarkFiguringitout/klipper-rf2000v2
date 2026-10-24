@@ -64,7 +64,53 @@ tests/run_klippy_batch.sh ~/klipper ~/klippy-env/bin/python
 KLIPPER_DIR=~/klipper ~/klippy-env/bin/python tests/test_units.py
 ```
 
+## Verified on a real RF2000v2
+
+First hardware run on 2026-10-24: RF2000v2 with V3 hotends, Raspberry Pi 5
+(Raspberry Pi OS 13 / Debian trixie), Klipper master v0.13.0-816,
+FTDI FT232R USB serial. Install with `scripts/install.sh -y` (original
+firmware backed up, Klipper flashed and verified by avrdude). Tested
+without a person at the printer, so every result below comes from a
+sensor or register readback:
+
+| Function | Result |
+|---|---|
+| MCU link | ready, 250000 baud, no retransmits, no watchdog resets (TPS3823 floating WDI confirmed) |
+| DRV8711 SPI | all registers read back as written on all 5 drivers; UVLO latched after power-on, STD/STDLAT at rest (informational, see fix 2) |
+| Thermistors | T0 17.4 / T1 19.7 / bed 19.4 C at room temperature (V3 tables correct) |
+| Directions + min switches | X, Y, Z: creeping toward min triggers the switch, +5 mm releases it |
+| Travel | Y 290 no lost steps; X stops at ~174.5 -> `position_max: 170` (fix 4); Z-max switch at 185.3 (185 configured), open at Z184 |
+| Heaters | T0, T1, bed heat; PID_CALIBRATE T0 25.4/2.29/70.6, T1 22.9/1.96/67.1, bed 33.2/1.53/180.4 |
+| Strain gauge | ADS1110 over I2C, noise range 1 digit; contact stiffness several 1000 digits/mm |
+| Probe | PROBE_ACCURACY std dev 0.0042 mm, range 0.013 mm (after fix 6) |
+| T1 alignment | RF_ALIGN_EXTRUDERS: T1 z offset -0.008 mm |
+| Bed mesh | 3x3 BED_MESH_CALIBRATE matches the imported RF heat bed scan shape within 0.038 mm; RF scan is 0.93 mm lower in absolute Z (documented in 04) |
+| Z offset scan | DMS_Z_OFFSET_SCAN cold 0.177, bed at 60 C 0.275 mm |
+| EEPROM | RF_EEPROM_INFO format 7, RF_IMPORT_HBS 10x15 imported |
+| Print job | PRINT_START (home, mesh, z-offset scan, heat, tare, T1) -> 2-layer square -> PRINT_END from a file, no errors |
+| Extrusion | DMS_VISCOSITY_TEST: back pressure 900 / 1960 digits at 0.5 / 1 mm/s; DMS_UNLOAD_FILAMENT retracts 90 mm |
+| Emergency stop | driving Z into the bed shut down at -5804 digits (limit 5000) |
+| Silent mode | TORQUE registers 145/100 -> 110/105 -> back (readback) |
+| Outputs | FET1, FET2, 230 V socket, fan, LEDs switch (Klipper state) |
+| Mill mode | G28 homes Z to Z-max, M3/M5 switch the 230 V socket, back to print mode homes Z-min |
+| Tool change / ditto | T1 shifts the carriage 33.6 mm and applies the T1 z offset; RF_DITTO syncs extruder1 |
+| Pause / resume | park +45/+50/+2 mm, extruder torque 90 -> 32 while paused, resume returns to the exact position |
+
+Bugs found on the printer and fixed: (1) `avr-size -C` missing on Debian
+13, (2) DRV8711 UVLO/stall info paused every print, (3) QUERY_Z_MAX race
+with the Z-max monitor shut Klipper down, (4) X travel 200 -> 170,
+(5) RF PID start values far off, (6) strain gauge idle measured during
+moves made every probe fail. Plus a PLA blob under a nozzle makes the probe
+trigger early (soft force curve, ~40-200 digits/mm instead of 1000s):
+clean the nozzles before probing.
+
 ## What could not be tested without the printer
+
+Status after the first hardware run: everything in the table above is
+confirmed; the list below is kept for reference. Still open: LCD
+content, keys, RGB/case light polarity and colours, buzzer type, fan PWM
+frequency / 100 % tolerance, I2C reliability over a long print.
+
 
 The port was built from the firmware sources and datasheets and verified
 in simulation. It has **not yet run on a physical RF2000v2**. These points
