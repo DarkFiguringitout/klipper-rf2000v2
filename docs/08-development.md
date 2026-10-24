@@ -100,7 +100,12 @@ Bugs found on the printer and fixed: (1) `avr-size -C` missing on Debian
 13, (2) DRV8711 UVLO/stall info paused every print, (3) QUERY_Z_MAX race
 with the Z-max monitor shut Klipper down, (4) X travel 200 -> 170,
 (5) RF PID start values far off, (6) strain gauge idle measured during
-moves made every probe fail. Plus a PLA blob under a nozzle makes the probe
+moves made every probe fail, (7) the 5 ms DRV8711 reset pulse caused
+"Timer too close" on 1 of 8 restarts (now 100 ms, 16/16 restarts OK).
+A code review afterwards found and fixed: the mill work part scan height
+(would have driven the bed into a thick work part), probe back-off timing,
+long pauses hitting idle_timeout, the idle timeout not stopping the mill
+spindle, and smaller macro issues - all re-verified on the printer. Plus a PLA blob under a nozzle makes the probe
 trigger early (soft force curve, ~40-200 digits/mm instead of 1000s):
 clean the nozzles before probing.
 

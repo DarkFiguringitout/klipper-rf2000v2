@@ -14,7 +14,7 @@ scripts.
 > **Status:** running on a physical RF2000v2 (Raspberry Pi 5, Raspberry Pi
 > OS 13 / Debian trixie, Klipper master v0.13.0-816) since 2026-10-24.
 > Every function that a sensor can confirm was tested on that printer and
-> six bugs found there were fixed - see
+> the bugs found there were fixed - see
 > [08-development.md](docs/08-development.md#verified-on-a-real-rf2000v2).
 > Still unconfirmed (needs a person at the printer): LCD content, the 11
 > keys, RGB/case light colours, buzzer, part fan spin. Run the self-test

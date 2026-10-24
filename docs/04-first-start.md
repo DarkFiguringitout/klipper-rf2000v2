@@ -187,6 +187,21 @@ G1 E50 F100
 new `rotation_distance = 25.0 × (extruded length / 100)`. Put the value into
 `printer.cfg` for `[extruder]` / `[extruder1]`.
 
+## 10b. Pressure advance
+
+Per filament, with a tuning tower (Klipper's method,
+https://www.klipper3d.org/Pressure_Advance.html): slice the square tower
+from the Klipper docs, then before printing
+
+```
+SET_VELOCITY_LIMIT SQUARE_CORNER_VELOCITY=1 ACCEL=500
+TUNING_TOWER COMMAND=SET_PRESSURE_ADVANCE PARAMETER=ADVANCE START=0 FACTOR=.005
+```
+
+Pick the height with the sharpest corners, `pressure_advance = height *
+0.005`, and put it into `[extruder]` / `[extruder1]` in `printer.cfg`.
+Bowden-free direct drive like the RF2000v2 usually lands at 0.02-0.08.
+
 ## 11. Ready
 
 Configure your slicer ([06-slicer.md](06-slicer.md)) and start a test print.

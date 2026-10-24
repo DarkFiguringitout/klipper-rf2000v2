@@ -111,7 +111,7 @@ class DRV8711ResetHelper:
         # Reset is active high - keep it released
         self.reset_pin.setup_start_value(0, 0)
         self.reset_time = config.getfloat('reset_pulse_time',
-                                          RESET_PULSE_TIME, minval=0.050,
+                                          RESET_PULSE_TIME, minval=0.100,
                                           maxval=0.500)
     def register_driver(self, driver):
         self.drivers.append(driver)
