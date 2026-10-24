@@ -102,6 +102,17 @@ class TestConfigGuards(unittest.TestCase):
             self.assertLess(kp, 60., "%s pid_Kp looks like the RF fw value" % h)
             self.assertNotRegex(section(hw, h), r'(?m)^(control|pid_K[pid]):', h)
 
+    def test_purge_relieves_nozzle_before_lift(self):
+        # a purge line followed by a Z lift without retract tripped the
+        # DMS emergency stop (7710 digits) on the first real print
+        pc = open(os.path.join(REPO, "config/rf2000v2/macros/print.cfg")).read()
+        purge = pc[pc.index("[gcode_macro _RF_PURGE]"):]
+        purge = purge[:purge.index("
+[")]
+        self.assertLess(purge.index("G1 E-2"), purge.index("G1 Z1.0"))
+        dms = open(os.path.join(REPO, "config/rf2000v2/dms.cfg")).read()
+        self.assertRegex(dms, r"(?m)^emergency_stop_holdoff: [1-9]")
+
     def test_build_script_portable_avr_size(self):
         s = open(os.path.join(REPO, 'scripts/build_firmware.sh')).read()
         self.assertIn('avr-size --format=avr', s)

@@ -192,6 +192,13 @@ class RF2000DMS:
         self.stop_max = config.getint('emergency_stop_digits_max', 5000)
         self.stop_checks = config.getint('emergency_stop_checks', 2,
                                          minval=1)
+        # Nozzle pressure stays high for seconds after extruding (measured:
+        # 4700 digits 1 s and 1500 digits 3 s after stopping without a
+        # retract), so a Z move right after extrusion is not a blocked bed.
+        # A purge line followed by a Z lift tripped the stop at 7710 digits.
+        self.stop_holdoff = config.getfloat('emergency_stop_holdoff', 3.0,
+                                            minval=0.)
+        self.last_extrude_time = -999.
         # faster polling while Z moves (RF fw checks every 10ms)
         self.stop_interval = config.getfloat('emergency_stop_interval', 0.050,
                                              minval=0.020)
@@ -648,7 +655,12 @@ class RF2000DMS:
         else:
             self.pause_acc = []
         # Emergency stop: Z moving without extrusion and blocked
-        if z_moving and not e_moving and (self.stop_min or self.stop_max):
+        if e_moving:
+            self.last_extrude_time = eventtime
+        recently_extruded = (eventtime - self.last_extrude_time
+                             < self.stop_holdoff)
+        if (z_moving and not e_moving and not recently_extruded
+                and (self.stop_min or self.stop_max)):
             next_time = min(next_time, eventtime + self.stop_interval)
             if fresh:
                 self.stop_acc.append(val)
