@@ -5,7 +5,7 @@
 | Setting | Value |
 |---|---|
 | G-code flavor | Klipper (or Marlin 2 / RepRap) |
-| Bed shape | X 0..170, Y 0..290 (dual), X 0..200 when only T0 is used |
+| Bed shape | X 0..170, Y 0..290 (X stops mechanically at ~174.5, measured) |
 | Max height | 185 |
 | Origin | front left (0,0) |
 | Extruders | 2, nozzle 0.4, filament 1.75 |
@@ -58,4 +58,4 @@ DMS_PRESSURE_CONTROL TARGET=3000 MODE=speed MIN_SPEED=60
 
 ## Single extrusion
 
-Use T0 only. Bed width 200 mm, `PRINT_START ... EXTRUDER1=0 TOOL=0`.
+Use T0 only. Bed width 170 mm, `PRINT_START ... EXTRUDER1=0 TOOL=0`.
