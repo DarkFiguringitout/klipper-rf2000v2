@@ -27,6 +27,8 @@
 | First layer too high / low | Live adjust with the bed up/down keys, then set `z_offset` in `[rf2000_dms]` |
 | T1 prints offset from T0 | `SET_TOOL_OFFSET X= Y=` after a calibration print, `RF_ALIGN_EXTRUDERS` for Z |
 | LCD blank | Normal until Klipper connects. Otherwise check `[display]` errors in `klippy.log` |
+| Klipper stays at "startup" after an emergency stop and a restart | Seen on the test printer: the board keeps its old state. `FIRMWARE_RESTART` (Mainsail power menu) resets it; do not send it while Klipper is still connecting |
+| `DMS: soft contact (... digits/mm)` | Something soft under the nozzle (plastic blob, strand). Clean the nozzle and probe again; the z-offset scan in PRINT_START skips the correction and keeps the saved mesh instead |
 | Mainsail "Klipper dirty" | Run `scripts/install.sh --update` (re-adds the extras to `.git/info/exclude`) |
 
 Logs: `~/printer_data/logs/klippy.log`. When asking for help, attach this

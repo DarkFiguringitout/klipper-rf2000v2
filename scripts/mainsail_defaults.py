@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Mainsail defaults for the RF2000v2: temperature presets and a tidy macro
+# Mainsail defaults for the RF2000v2: temperature presets, a tidy macro
 # panel (the ~60 RF M-code aliases stay usable from G-code, but are hidden
-# from the buttons).  Safe to run again; existing presets of the same name
+# from the buttons) and a confirmation before emergency stop / cancel.  Safe to run again; existing presets of the same name
 # are replaced.
 #
 #   python3 scripts/mainsail_defaults.py [moonraker-url]
@@ -55,6 +55,10 @@ def main():
     hidden = sorted(m for m in macros
                     if m in HIDDEN or re.fullmatch(r"M\d+(\.\d+)?", m))
     item("macros.hiddenMacros", hidden)
+    # ask before emergency stop / cancel: one click on the red ! shuts
+    # Klipper down (happened twice on the test printer by accident)
+    item("uiSettings.confirmOnEmergencyStop", True)
+    item("uiSettings.confirmOnCancelJob", True)
     print("presets: %s; %d of %d macros hidden"
           % (", ".join(PRESETS), len(hidden), len(macros)))
 
