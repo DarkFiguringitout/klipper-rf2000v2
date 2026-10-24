@@ -382,6 +382,8 @@ def make_dms(surface=-0.25, k=4000., speed=0.5):
     dms.release_delta = 5
     dms.max_contact_digits = 5000
     dms.backoff_retries = 3
+    dms.min_stiffness = 400.
+    dms.stiffness_push = 0.03
     dms.idle_samples = 5
     dms.idle_tolerance = 15
     dms.idle_retries = 5
@@ -411,6 +413,30 @@ class TestDMSProbe(unittest.TestCase):
             self.assertAlmostEqual(idle, bed.idle, delta=3)
             # released afterwards
             self.assertGreater(th.get_position()[2], z)
+
+    def test_soft_contact_rejected(self):
+        # a plastic blob under the nozzle: 40-200 digits/mm on the printer
+        dms, bed, th = make_dms(surface=-0.25, k=150.)
+        th.manual_move([None, None, 1.0], 5.)
+        with self.assertRaises(RuntimeError) as cm:
+            dms.probe_contact(FakeGCmd())
+        self.assertIn("soft contact", str(cm.exception))
+
+    def test_idle_shift_after_contact(self):
+        # Real RF2000v2: after pressing the bed the idle force stays ~40
+        # digits off (drift / hysteresis); the back-off must still finish.
+        dms, bed, th = make_dms(surface=-0.25)
+        orig = bed.value_at
+        state = {'shift': 0}
+        def shifted(t):
+            val, st = orig(t)
+            if val - bed.idle > 200:
+                state['shift'] = -40
+            return val + state['shift'], st
+        bed.value_at = shifted
+        th.manual_move([None, None, 1.0], 5.)
+        z, idle, val = dms.probe_contact(FakeGCmd())
+        self.assertAlmostEqual(z, -0.25 - 10. / bed.k, delta=0.006)
 
     def test_soft_gauge_still_accurate(self):
         dms, bed, th = make_dms(surface=-0.1, k=800.)

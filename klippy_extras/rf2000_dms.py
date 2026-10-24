@@ -163,6 +163,12 @@ class RF2000DMS:
         self.max_contact_digits = config.getint('max_contact_digits', 5000,
                                                 minval=1)
         self.backoff_retries = config.getint('backoff_retries', 3, minval=0)
+        # Contact must be rigid: pushing stiffness_push further must raise
+        # the force by at least min_stiffness digits/mm. A nozzle on the bed
+        # gives ~5000 digits/mm on a real RF2000v2, a plastic blob 40-200.
+        self.min_stiffness = config.getfloat('min_stiffness', 400., minval=0.)
+        self.stiffness_push = config.getfloat('stiffness_push', 0.03,
+                                              above=0., maxval=0.1)
         self.z_min_position = probe.lookup_minimum_z(config)
         self.param_helper = probe.ProbeParameterHelper(config)
         self.probe_session = probe.SampleAveragingHelper(
@@ -456,7 +462,7 @@ class RF2000DMS:
         if state['time'] is None:
             return None, None
         return self._sample_z(state['time']), state['value']
-    def probe_contact(self, gcmd, contact_delta=None):
+    def probe_contact(self, gcmd, contact_delta=None, check_stiffness=True):
         params = self.get_probe_params(gcmd)
         if contact_delta is None:
             contact_delta = gcmd.get_int('CONTACT_DELTA', self.contact_delta,
@@ -487,11 +493,19 @@ class RF2000DMS:
         pos = toolhead.get_position()
         pos[2] = max(pos[2], z1) + self.backoff_dist
         toolhead.manual_move(pos, params['lift_speed'])
+        prev = None
         for attempt in range(self.backoff_retries + 1):
             toolhead.wait_moves()  # the lift is only queued until here
             val, t = self.read_fresh()
             if abs(val - first_idle) < self.release_delta + self.idle_tolerance:
                 break
+            # Free = lifting further no longer changes the force. The idle
+            # value itself can drift 25-60 digits during a probe while bed
+            # and nozzle heat (seen on a real RF2000v2), so the comparison
+            # with the pre-contact idle alone failed probes at random.
+            if prev is not None and abs(val - prev) < self.idle_tolerance:
+                break
+            prev = val
             pos[2] += self.backoff_dist
             toolhead.manual_move(pos, params['lift_speed'])
         else:
@@ -503,6 +517,23 @@ class RF2000DMS:
         z2, v2 = self.descend_until_contact(slow_speed, idle, contact_delta)
         if z2 is None:
             raise self.printer.command_error("DMS: no contact in slow pass")
+        if check_stiffness and self.min_stiffness:
+            toolhead.wait_moves()
+            f1 = self.read_fresh()[0]
+            pos = toolhead.get_position()
+            pos[2] -= self.stiffness_push
+            toolhead.manual_move(pos, slow_speed)
+            toolhead.wait_moves()
+            self.read_fresh()  # this sample may still be from the move
+            f2 = self.read_fresh()[0]
+            stiffness = abs(f2 - f1) / self.stiffness_push
+            if stiffness < self.min_stiffness:
+                pos[2] = max(pos[2], z2) + self.backoff_dist
+                toolhead.manual_move(pos, params['lift_speed'])
+                raise self.printer.command_error(
+                    "DMS: soft contact (%.0f digits/mm, the nozzle on the bed"
+                    " gives several 1000) - plastic on the nozzle? Clean it"
+                    " and probe again" % (stiffness,))
         # Release the force on the nozzle
         if self.release_dist:
             pos = toolhead.get_position()
@@ -818,7 +849,16 @@ class RF2000DMS:
         x = gcmd.get_float('X', (amin[0] + amax[0]) / 2.)
         y = gcmd.get_float('Y', (amin[1] + amax[1]) / 2.)
         learn = gcmd.get_float('S', 100., minval=0., maxval=100.) / 100.
-        measured = self._probe_at(gcmd, x, y)
+        try:
+            measured = self._probe_at(gcmd, x, y)
+        except self.printer.command_error as e:
+            if 'soft contact' not in str(e):
+                raise
+            # The saved mesh is in the same frame as homing (repeatable to a
+            # few um), so printing on without a blob-shifted offset is safer
+            gcmd.respond_info("WARNING: %s - z-offset scan skipped, g-code Z"
+                              " offset unchanged" % (e,))
+            return
         mesh_z = 0.
         bed_mesh = self.printer.lookup_object('bed_mesh', None)
         if bed_mesh is not None and bed_mesh.get_mesh() is not None:
@@ -841,7 +881,8 @@ class RF2000DMS:
         delta = gcmd.get_int('CONTACT_DELTA', 500, minval=1)
         self.probing += 1
         try:
-            z, idle, val = self.probe_contact(gcmd, delta)
+            z, idle, val = self.probe_contact(gcmd, delta,
+                                              check_stiffness=False)
         finally:
             self.probing = max(0, self.probing - 1)
         cur = toolhead.get_position()[2]
