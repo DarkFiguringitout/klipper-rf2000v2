@@ -33,6 +33,11 @@ ISGAIN_CHOICES = {5: 0, 10: 1, 20: 2, 40: 3}
 DTIME_CHOICES = {400: 0, 450: 1, 650: 2, 850: 3}
 STATUS_BITS = ['OTS', 'AOCP', 'BOCP', 'APDF', 'BPDF', 'UVLO', 'STD',
                'STDLAT']
+# Bits that stop the H-bridge (over-temperature, over-current, pre-driver).
+# UVLO, STD and STDLAT are informational: on a real RF2000v2 both extruder
+# drivers report UVLO (and pull FAULTn low while enabled) although the
+# motors run normally, and STD/STDLAT are always set on a motor at rest.
+FAULT_MASK = 0x1f
 MICROSTEP_MODES = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6, 128: 7,
                    256: 8}
 VREF = 2.75
@@ -53,6 +58,12 @@ def config_getint_hex(config, option, default, minval, maxval):
                            " 0x%x and 0x%x" % (option, config.get_name(),
                                                minval, maxval))
     return val
+
+
+def decode_status(status, mask=0xff):
+    if status is None:
+        return []
+    return [STATUS_BITS[i] for i in range(8) if status & mask & (1 << i)]
 
 
 def build_frame(addr, data, read=False):
@@ -176,6 +187,7 @@ class DRV8711:
                                                      True)
         self.shadow = {}
         self.initialized = False
+        self.last_status = None
         if self.disable_on_shutdown:
             # Turn the H-bridges off if the MCU enters shutdown
             ctrl_off = calc_ctrl(self.microsteps, self.isgain, self.dtime,
@@ -249,14 +261,19 @@ class DRV8711:
         return {'torque': self.torque, 'run_torque': self.run_torque,
                 'microsteps': self.microsteps,
                 'current': self.get_current(),
-                'initialized': self.initialized}
+                'initialized': self.initialized,
+                'status': self.last_status,
+                'faults': decode_status(self.last_status, FAULT_MASK)}
     # G-Code commands
     cmd_DRV_STATUS_help = "Read and decode the DRV8711 STATUS register"
     def cmd_DRV_STATUS(self, gcmd):
-        status = self.read_reg(REG_STATUS)
-        flags = [STATUS_BITS[i] for i in range(8) if status & (1 << i)]
-        gcmd.respond_info("DRV8711 %s: STATUS=0x%03x %s" % (
-            self.name, status, " ".join(flags) if flags else "(no faults)"))
+        self.last_status = status = self.read_reg(REG_STATUS)
+        faults = decode_status(status, FAULT_MASK)
+        info = decode_status(status, ~FAULT_MASK & 0xff)
+        gcmd.respond_info("DRV8711 %s: STATUS=0x%03x %s%s" % (
+            self.name, status,
+            "FAULT " + " ".join(faults) if faults else "(no faults)",
+            " info: " + " ".join(info) if info else ""))
         if gcmd.get_int('CLEAR', 0):
             self.write_reg(REG_STATUS, 0x000)
             gcmd.respond_info("DRV8711 %s: faults cleared" % (self.name,))

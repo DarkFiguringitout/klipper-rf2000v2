@@ -57,6 +57,13 @@ class TestDRV8711(unittest.TestCase):
         self.assertEqual(self.word(drv8711.build_frame(7, 0, read=True)),
                          0xF000)
 
+    def test_status_fault_mask(self):
+        # 0x0e0 = UVLO STD STDLAT as read on a real RF2000v2 extruder driver
+        self.assertEqual(drv8711.decode_status(0x0e0, drv8711.FAULT_MASK), [])
+        self.assertEqual(drv8711.decode_status(0x0e3, drv8711.FAULT_MASK),
+                         ["OTS", "AOCP"])
+        self.assertEqual(drv8711.decode_status(None), [])
+
     def test_current_roundtrip(self):
         t = drv8711.current_to_torque(1.5, 20, 0.05)
         self.assertAlmostEqual(drv8711.torque_to_current(t, 20, 0.05), 1.5,

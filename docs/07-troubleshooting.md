@@ -11,6 +11,7 @@
 | Motors don't move, hold no torque | DRV8711 not configured: check `klippy.log` for `drv8711`, run `DRV_INIT STEPPER=stepper_x`, `DRV_STATUS_ALL`. Check the `enable_pin`s are not inverted. |
 | A motor runs the wrong way | Toggle `!` on its `dir_pin` in `printer.cfg` |
 | Motors loud / hot | `RF_SILENT_MODE S=1` or lower `torque` in `printer.cfg` |
+| `DRV8711 FAULTn low without OTS/OCP/PDF ... ignored` | Normal right after power-on: the DRV8711s latch `UVLO` while the 24 V supply ramps up and pull FAULTn low when enabled. `STD`/`STDLAT` (stall detect) are always set on a motor at rest. Only OTS/AOCP/BOCP/APDF/BPDF pause a print. Seen on a real RF2000v2: the extruder drivers kept `UVLO` until the first restart, motors ran normally |
 | `DRV8711 driver fault detected` | Over-current / over-temperature / under-voltage. `DRV_STATUS_ALL` names the driver and fault. Check the motor cables. `DRV_STATUS_ALL CLEAR=1` |
 | Thermistor reads ~0 °C or ~300 °C | Wrong `sensor_type` for your hotend (V3 vs. V1/V2), see [04-first-start.md](04-first-start.md) step 5 |
 | `ADC out of range` | A heater or sensor cable is unplugged or broken, or `[temperature_sensor X35]` is enabled without a sensor |
