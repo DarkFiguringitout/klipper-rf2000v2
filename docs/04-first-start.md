@@ -202,6 +202,55 @@ Pick the height with the sharpest corners, `pressure_advance = height *
 0.005`, and put it into `[extruder]` / `[extruder1]` in `printer.cfg`.
 Bowden-free direct drive like the RF2000v2 usually lands at 0.02-0.08.
 
-## 11. Ready
+## 11. Input shaping (needs an ADXL345, ~5 EUR)
+
+Input shaping removes ringing/ghosting and allows higher acceleration -
+the biggest print quality gain left on this machine. Klippain
+[Shake&Tune](https://github.com/Frix-x/klippain-shaketune) creates the
+analysis graphs.
+
+Install Shake&Tune (dependencies, module link, Moonraker updater; no
+config yet):
+
+```
+git clone https://github.com/Frix-x/klippain-shaketune.git ~/klippain_shaketune
+sudo apt install -y libopenblas-dev
+~/klippy-env/bin/pip install -r ~/klippain_shaketune/requirements.txt
+ln -frsn ~/klippain_shaketune/shaketune ~/klipper/klippy/extras/shaketune
+echo klippy/extras/shaketune >> ~/klipper/.git/info/exclude
+```
+
+plus the `[update_manager Klippain-ShakeTune]` block from the Shake&Tune
+README in `moonraker.conf`. (Its `install.sh` does the same but restarts
+Klipper immediately - an unsaved bed mesh would be lost.)
+
+Then wire the sensor and enable it: follow the header of
+`config/rf2000v2/optional/adxl345_shaketune.cfg` and add
+`[include rf2000v2/optional/adxl345_shaketune.cfg]` to `printer.cfg`.
+Do **not** add `[shaketune]` without a working accelerometer - Klipper
+refuses to start without `[resonance_tester]`.
+
+Measure (hotend cold, bed clear):
+
+```
+ACCELEROMETER_QUERY            ; must print changing values
+AXES_SHAPER_CALIBRATION        ; graphs in ShakeTune_results/ (Mainsail > Machine)
+```
+
+Put the recommended shaper into `printer.cfg`, `FIRMWARE_RESTART`:
+
+```
+[input_shaper]
+shaper_type_x: mzv
+shaper_freq_x: 45.0
+shaper_type_y: mzv
+shaper_freq_y: 38.0
+```
+
+(example values - use yours). With shaping active, `max_accel` can be
+raised towards the graph's suggestion; the AVR step rate still limits
+speed to ~300 mm/s at 32 micro steps.
+
+## 12. Ready
 
 Configure your slicer ([06-slicer.md](06-slicer.md)) and start a test print.
