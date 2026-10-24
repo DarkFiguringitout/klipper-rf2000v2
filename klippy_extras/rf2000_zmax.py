@@ -39,6 +39,10 @@ class RF2000ZMax:
         self.in_home_cmd = False
         self.hits = 0
         self.timer = None
+        # Klipper keeps one response handler per (message, oid): two
+        # overlapping endstop queries (monitor timer + QUERY_Z_MAX) make
+        # the second one fail with KeyError and shut the printer down.
+        self.query_mutex = self.reactor.mutex()
         printer.register_event_handler("klippy:ready", self._handle_ready)
         printer.register_event_handler("homing:homing_move_begin",
                                        self._homing_begin)
@@ -63,9 +67,12 @@ class RF2000ZMax:
         toolhead = self.printer.lookup_object('toolhead')
         kin = toolhead.get_kinematics()
         return kin.get_status(self.reactor.monotonic())['axis_maximum'][2]
+    def _query_at(self, print_time):
+        with self.query_mutex:
+            return self.mcu_endstop.query_endstop(print_time)
     def _query(self):
         toolhead = self.printer.lookup_object('toolhead')
-        return self.mcu_endstop.query_endstop(toolhead.get_last_move_time())
+        return self._query_at(toolhead.get_last_move_time())
     def _monitor(self, eventtime):
         if self.printer.is_shutdown():
             return self.reactor.NEVER
@@ -76,7 +83,7 @@ class RF2000ZMax:
         if 'z' not in toolhead.get_status(eventtime)['homed_axes']:
             return eventtime + self.monitor_interval
         try:
-            hit = self.mcu_endstop.query_endstop(
+            hit = self._query_at(
                 self.mcu_endstop.get_mcu().estimated_print_time(eventtime))
         except Exception:
             logging.exception("rf2000_zmax: query failed")
