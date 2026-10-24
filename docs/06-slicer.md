@@ -104,6 +104,14 @@ steady, retract, watch the residual nozzle pressure (PLA, 210 C):
 once (RF forum users settled on 1.9 mm; the Simplify3D default of 4.5 mm
 is more than needed).
 
+Flow ratio: the first real prints under-extruded at the OrcaSlicer
+default of 0.98 although the nozzle pressure during printing matched the
+measured flow curve (1000-2200 digits at 1-3 mm³/s, so no extruder slip
+and no clog). 110 % live extrusion (M221) looked right, so the PLA
+profile uses **1.08**. E steps are the stock RF values (8 full steps/mm,
+`rotation_distance: 25`); whether the difference is the extruder gear or
+the filament diameter needs the ruler check (docs/04 step 10).
+
 Live correction: the PLA filament start G-code enables
 `DMS_PRESSURE_CONTROL TARGET=4500 MODE=speed MIN_SPEED=50`: above 4500
 digits (normal printing stays below ~4300 at 225 C, the extruder slips
