@@ -41,6 +41,10 @@ PRINT_START BED=[first_layer_bed_temperature] EXTRUDER=[first_layer_temperature_
 OrcaSlicer variable names: `[bed_temperature_initial_layer_single]`,
 `[nozzle_temperature_initial_layer]` (one value per extruder).
 
+For layer progress in Mainsail / Mobileraker add, in OrcaSlicer, before
+`PRINT_START`: `SET_PRINT_STATS_INFO TOTAL_LAYER=[total_layer_count]` and
+in "Layer change G-code": `SET_PRINT_STATS_INFO CURRENT_LAYER={layer_num + 1}`.
+
 Cura (two extruders):
 
 ```
