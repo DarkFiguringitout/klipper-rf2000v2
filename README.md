@@ -16,8 +16,8 @@ scripts.
 > Every function that a sensor can confirm was tested on that printer and
 > the bugs found there were fixed - see
 > [08-development.md](docs/08-development.md#verified-on-a-real-rf2000v2).
-> Still unconfirmed (needs a person at the printer): LCD content, the 11
-> keys, RGB/case light colours, buzzer, part fan spin. Run the self-test
+> Still unconfirmed (needs a person at the printer): LCD content, pressing
+> the 11 keys, RGB/case light colours, buzzer. Run the self-test
 > ([09-hardware-validation.md](docs/09-hardware-validation.md)) on your
 > printer and report the results.
 

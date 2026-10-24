@@ -91,7 +91,9 @@ sensor or register readback:
 | Extrusion | DMS_VISCOSITY_TEST: back pressure 900 / 1960 digits at 0.5 / 1 mm/s; DMS_UNLOAD_FILAMENT retracts 90 mm |
 | Emergency stop | driving Z into the bed shut down at -5804 digits (limit 5000) |
 | Silent mode | TORQUE registers 145/100 -> 110/105 -> back (readback) |
-| Outputs | FET1, FET2, 230 V socket, fan, LEDs switch (Klipper state) |
+| Outputs | FET1, FET2, 230 V socket, LEDs switch (Klipper state) |
+| Part fan | spins at S255 and S128: holding T0 at 200 C the heater power rises 0.25 -> 0.415 (100 %) / 0.386 (S128 = 56 % PWM) and falls back when the fan stops |
+| Keys | all 7 gcode_button inputs and FAULTn read RELEASED at rest (polarity correct) |
 | Mill mode | G28 homes Z to Z-max, M3/M5 switch the 230 V socket, back to print mode homes Z-min |
 | Tool change / ditto | T1 shifts the carriage 33.6 mm and applies the T1 z offset; RF_DITTO syncs extruder1 |
 | Pause / resume | park +45/+50/+2 mm, extruder torque 90 -> 32 while paused, resume returns to the exact position |
@@ -112,9 +114,8 @@ clean the nozzles before probing.
 ## What could not be tested without the printer
 
 Status after the first hardware run: everything in the table above is
-confirmed; the list below is kept for reference. Still open: LCD
-content, keys, RGB/case light polarity and colours, buzzer type, fan PWM
-frequency / 100 % tolerance, I2C reliability over a long print.
+confirmed; the list below is kept for reference. Still open (needs a person at the printer): LCD content, key presses,
+RGB/case light colours, buzzer; long-print I2C reliability.
 
 
 The original list from before the first hardware run, with the result
