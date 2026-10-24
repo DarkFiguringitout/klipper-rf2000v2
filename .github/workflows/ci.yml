@@ -47,6 +47,9 @@ jobs:
       - name: Unit tests
         run: KLIPPER_DIR=../klipper ../venv/bin/python tests/test_units.py
 
+      - name: Regression checks (bugs found on real hardware)
+        run: KLIPPER_DIR=../klipper ../venv/bin/python tests/test_regressions.py
+
       - name: Klippy batch tests
         run: tests/run_klippy_batch.sh ../klipper ../venv/bin/python
 

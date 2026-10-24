@@ -79,7 +79,7 @@ DECAY `0x4430`, STALL `0x583C`, DRIVE `0x60F0`, TORQUE `0x11xx`.
 |---|---|---|
 | Heater T0 / T1 / bed | PB4 / PH6 / PE2 | HZ1 / HZ2 / HZ3 |
 | Thermistor T0 / T1 / bed / X35 | PK5 / PK6 / PK7 / PK4 | ADC13 / 14 / 15 / 12, 4.7k pull-up |
-| Part fan | PA5 | OUT2, `max_power: 0.757` (RF fw PWM limit 193/255) |
+| Part fan | PA5 | OUT2, `max_power: 1.0`; `M106` maps S1..254 to PWM 90..193 like the RF fw, S255 = 100 % |
 | Case fan (X45) | PF4 | OUT5/FET3, `[controller_fan case_fan]` |
 | FET1 X42 / FET2 X44 | PC4 / PC5 | `[output_pin fet1_x42]`, `[output_pin fet2_x44]` |
 | 230V output | PE5 | `[output_pin output_230v]` |
@@ -111,7 +111,8 @@ DECAY `0x4430`, STALL `0x583C`, DRIVE `0x60F0`, TORQUE `0x11xx`.
 * The X switch is 33.6 mm left of X=0 (`position_endstop: -33.6`), exactly
   as the RF firmware homes (`minSteps - offX`). Both nozzles can reach X=0,
   and slicer coordinates are the same as with the stock firmware.
-* X 0..170 printable with both nozzles (200 for T0 only), Y 0..290, Z 0..185.
+* X 0..170 printable with both nozzles (the carriage stops mechanically at
+  ~174.5, measured), Y 0..290, Z 0..185.
 * The bed moves in Z. Z=0 is the Z-min switch. Bed mesh values and strain
   gauge probing can go down to Z=-2.
 

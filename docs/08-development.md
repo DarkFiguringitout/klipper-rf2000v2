@@ -84,8 +84,8 @@ sensor or register readback:
 | Strain gauge | ADS1110 over I2C, noise range 1 digit; contact stiffness several 1000 digits/mm |
 | Probe | PROBE_ACCURACY std dev 0.0042 mm, range 0.013 mm (after fix 6) |
 | T1 alignment | RF_ALIGN_EXTRUDERS: T1 z offset -0.008 mm |
-| Bed mesh | 3x3 BED_MESH_CALIBRATE matches the imported RF heat bed scan shape within 0.038 mm; RF scan is 0.93 mm lower in absolute Z (documented in 04) |
-| Z offset scan | DMS_Z_OFFSET_SCAN cold 0.177, bed at 60 C 0.275 mm |
+| Bed mesh | 3x3 BED_MESH_CALIBRATE matches the imported RF heat bed scan shape within 0.038 mm; with the RF mesh loaded the nozzle touches at g-code Z 0.00 (gauge -255 digits at Z0, none at Z0.05) |
+| Z offset scan | DMS_Z_OFFSET_SCAN follows real changes: bed at 60 C +0.1 mm vs cold; a ~0.95 mm bed height change between two sessions was corrected automatically by PRINT_START |
 | EEPROM | RF_EEPROM_INFO format 7, RF_IMPORT_HBS 10x15 imported |
 | Print job | PRINT_START (home, mesh, z-offset scan, heat, tare, T1) -> 2-layer square -> PRINT_END from a file, no errors |
 | Extrusion | DMS_VISCOSITY_TEST: back pressure 900 / 1960 digits at 0.5 / 1 mm/s; DMS_UNLOAD_FILAMENT retracts 90 mm |
@@ -112,32 +112,32 @@ content, keys, RGB/case light polarity and colours, buzzer type, fan PWM
 frequency / 100 % tolerance, I2C reliability over a long print.
 
 
-The port was built from the firmware sources and datasheets and verified
-in simulation. It has **not yet run on a physical RF2000v2**. These points
-need confirming on real hardware; please report results in an issue:
+The original list from before the first hardware run, with the result
+of that run in brackets:
 
 * DRV8711 SPI timing through Klipper's software SPI at 100 kHz, and
-  register readback (open-drain SDATO, see `01-hardware.md`)
+  register readback (open-drain SDATO, see `01-hardware.md`) [confirmed]
 * ADS1110 data-ready bit behaviour (with a fallback to timed sampling) and
-  the real noise / stiffness of the strain gauge
-* PID start values (Repetier values; run `PID_CALIBRATE` anyway)
-* hotend thermistor type of your printer (V3 vs. V1/V2)
+  the real noise / stiffness of the strain gauge [confirmed: noise 1 digit]
+* PID start values [were far off, replaced by measured values]
+* hotend thermistor type of your printer (V3 vs. V1/V2) [V3 confirmed]
 * Y travel (290 mm from the firmware), bed screw positions in
-  `[screws_tilt_adjust]` (placeholders), part fan PWM frequency
-* RGB / case light polarity, buzzer type
+  `[screws_tilt_adjust]` (placeholders), part fan PWM frequency [Y confirmed,
+  X was wrong (fix 4); screws and fan still open]
+* RGB / case light polarity, buzzer type [open - needs a person]
 * TPS3823 watchdog: the port relies on a floating WDI disabling it (TI
   datasheet). A pull resistor on some board revision would reset the MCU
-  every ~1.6 s (see troubleshooting)
+  every ~1.6 s (see troubleshooting) [confirmed: no resets]
 * the Z-max switch position (assumed at `position_max` = 185, as the RF
-  firmware does; first-start step 8 checks it)
-* whether the part fan tolerates 100 % (the RF fw allows it for S255)
+  firmware does; first-start step 8 checks it) [confirmed: 185.3]
+* whether the part fan tolerates 100 % (the RF fw allows it for S255) [open]
 * reliability of the strain gauge I2C over the carriage cable (Klipper
-  shuts down on any I2C error, see docs/05)
+  shuts down on any I2C error, see docs/05) [no error in ~3 h of tests]
 * the `frozen_samples` threshold (75 identical readings = 5 s at 15 SPS
   aborts a probe move as "value frozen"; raise it if a very quiet gauge
-  triggers it)
+  triggers it) [no false trigger]
 * DRV8711 register retention through enable (nSLEEP) cycles - the RF
-  firmware relies on it as well
+  firmware relies on it as well [confirmed by readback]
 
 Note: the Klippy batch tests run without sensor responses, so they cover
 configuration, macros, tool changes and motion, but not the probing

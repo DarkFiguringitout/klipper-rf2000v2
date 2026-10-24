@@ -1,8 +1,8 @@
 # 9. Hardware validation (please report your results)
 
-This port was verified against the firmware sources, the datasheets and in
-Klipper's simulation, but it has not yet run on a physical RF2000v2 (see
-[08-development.md](08-development.md)). The self-test macros below take
+This port runs on a real RF2000v2 (results in
+[08-development.md](08-development.md#verified-on-a-real-rf2000v2)), but
+boards and hotends differ, so run the self-test on your printer too. The self-test macros below take
 about 15 minutes on the printer and check every hardware function in turn.
 Each step prints what you should see or hear (`SELFTEST ...` lines in the
 console).

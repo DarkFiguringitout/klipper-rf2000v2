@@ -230,6 +230,9 @@ class FakeBed:
         z = self.z_at(sample_t)
         self.count += 1
         n = (self.count * 7919) % (2 * self.noise + 1) - self.noise
+        th = getattr(self, 'toolhead', None)
+        if th is not None and th.queued:
+            n += FakeToolhead.QUEUED_LOAD
         return int(self.idle + max(0., self.surface - z) * self.k + n), \
             sample_t
 
@@ -294,11 +297,18 @@ class FakeKin:
 
 class FakeToolhead:
     DRIP_LAG = 0.15  # host only stops feeding moves -> overshoot
+    # Like Klipper's lookahead: manual_move() only queues the move (the
+    # commanded position changes at once, the bed moves on wait_moves()).
+    # While a move is queued the gauge sees the acceleration load of the
+    # hotend holder (fix 6: idle force measured during moves).
+    QUEUED_LOAD = 30
     def __init__(self, bed, reactor):
         self.bed = bed
         self.reactor = reactor
         self.kin = FakeKin(bed)
         self.pos = [100., 100., bed.z, 0.]
+        self.queued = []
+        bed.toolhead = self
     def get_position(self):
         return list(self.pos)
     def set_position(self, pos):
@@ -306,7 +316,9 @@ class FakeToolhead:
     def get_kinematics(self):
         return self.kin
     def wait_moves(self):
-        pass
+        q, self.queued = self.queued, []
+        for z, speed in q:
+            self._move_z(z, speed)
     def flush_step_generation(self):
         pass
     def _move_z(self, target, speed, completion=None):
@@ -325,10 +337,12 @@ class FakeToolhead:
         self.pos[2] = self.bed.z
     def manual_move(self, pos, speed):
         if pos[2] is not None:
-            self._move_z(pos[2], speed)
+            self.queued.append((pos[2], speed))
+            self.pos[2] = pos[2]
         self.pos[:2] = [p if p is not None else c
                         for p, c in zip(pos[:2], self.pos[:2])]
     def drip_move(self, pos, speed, completion):
+        self.wait_moves()
         self._move_z(pos[2], speed, completion)
 
 

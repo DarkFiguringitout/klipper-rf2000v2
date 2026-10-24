@@ -213,10 +213,10 @@ class RF2000EEPROM:
         gcmd.respond_info(
             "Imported RF matrix %d (%dx%d, %d micro steps) as bed_mesh"
             " profile '%s' (%dx%d, X %.1f..%.1f Y %.1f..%.1f, z %.3f..%.3f"
-            " mm). Run SAVE_CONFIG to keep it. The RF heights are not in"
-            " Klipper's absolute Z frame (0.93 mm lower on a tested"
-            " printer): keep DMS_Z_OFFSET_SCAN enabled in PRINT_START,"
-            " it corrects the offset." % (
+            " mm). Run SAVE_CONFIG to keep it. Its absolute height is"
+            " only right while the bed has not been moved since the scan:"
+            " keep DMS_Z_OFFSET_SCAN enabled in PRINT_START, it corrects"
+            " the offset." % (
                 slot, len(xs), len(ys), ms, name, xc, yc, min_x, max_x,
                 min_y, max_y, min(flat), max(flat)))
 

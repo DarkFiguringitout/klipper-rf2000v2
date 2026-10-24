@@ -488,6 +488,7 @@ class RF2000DMS:
         pos[2] = max(pos[2], z1) + self.backoff_dist
         toolhead.manual_move(pos, params['lift_speed'])
         for attempt in range(self.backoff_retries + 1):
+            toolhead.wait_moves()  # the lift is only queued until here
             val, t = self.read_fresh()
             if abs(val - first_idle) < self.release_delta + self.idle_tolerance:
                 break
@@ -722,8 +723,10 @@ class RF2000DMS:
             self.pc_integral = 0.
             self.pc_factor = 1.
         if self.so_applied:
-            script.append("SET_GCODE_OFFSET Z_ADJUST=%.4f MOVE=1"
-                          % (-self.so_applied,))
+            homed = 'z' in self._toolhead().get_status(
+                self.reactor.monotonic())['homed_axes']
+            script.append("SET_GCODE_OFFSET Z_ADJUST=%.4f MOVE=%d"
+                          % (-self.so_applied, homed))
             self.so_applied = 0.
         if self.fc_base is not None:
             script.append("M221 S%.1f" % (100. * self.fc_base[0],))

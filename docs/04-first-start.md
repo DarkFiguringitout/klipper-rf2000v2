@@ -113,12 +113,13 @@ RF_IMPORT_HBS            ; active slot; slot 1 becomes profile 'default'
 SAVE_CONFIG
 ```
 
-> The imported matrix keeps its **shape** (on the first tested printer it
-> matched a fresh strain gauge scan within 0.04 mm), but its absolute
-> heights are in the RF firmware's Z frame, 0.93 mm lower than Klipper's.
-> `PRINT_START` runs `DMS_Z_OFFSET_SCAN` by default, which measures the
-> real contact height and corrects this. Do not disable `z_offset_scan`
-> with an imported mesh, or the nozzle starts ~0.9 mm too low.
+> On the first tested printer the imported matrix matched a fresh strain
+> gauge scan within 0.04 mm in **shape**, and its absolute heights matched
+> the nozzle contact (Z0 touch within 0.005 mm). In another session, after
+> the bed had been moved, the whole bed sat 0.93 mm higher. `PRINT_START`
+> runs `DMS_Z_OFFSET_SCAN` by default, which measures the real contact
+> height before every print and corrects such shifts. Keep `z_offset_scan`
+> enabled, especially with an imported mesh.
 
 or scan again with the strain gauge (heat the bed to printing temperature
 first; the nozzle should be clean and around 150 °C, like the RF firmware's

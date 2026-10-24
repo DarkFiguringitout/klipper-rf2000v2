@@ -102,7 +102,7 @@ Extra parameters for probe commands: `CONTACT_DELTA=<digits>`,
   over, nozzle digging into the print).
 * **Emergency stop:** when Z moves without extrusion (homing, bed moves;
   small Z changes from the bed mesh during XY moves do not count)
-  and the average of 3 samples is outside ±5000 digits, Klipper shuts down
+  and the average of 2 new samples is outside ±5000 digits, Klipper shuts down
   (bed blocked).
 
 The limits come from the RF firmware and can be changed in `dms.cfg` or with
