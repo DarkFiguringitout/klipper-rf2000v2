@@ -383,7 +383,7 @@ def make_dms(surface=-0.25, k=4000., speed=0.5):
     dms.max_contact_digits = 5000
     dms.backoff_retries = 3
     dms.min_stiffness = 400.
-    dms.stiffness_push = 0.03
+    dms.stiffness_push = 0.05
     dms.idle_samples = 5
     dms.idle_tolerance = 15
     dms.idle_retries = 5
@@ -421,6 +421,13 @@ class TestDMSProbe(unittest.TestCase):
         with self.assertRaises(RuntimeError) as cm:
             dms.probe_contact(FakeGCmd())
         self.assertIn("soft contact", str(cm.exception))
+
+    def test_flexing_corner_accepted(self):
+        # bed corner X5 Y5: ~1000 digits/mm, still a real surface
+        dms, bed, th = make_dms(surface=-0.43, k=1000.)
+        th.manual_move([None, None, 1.0], 5.)
+        z, idle, val = dms.probe_contact(FakeGCmd())
+        self.assertAlmostEqual(z, -0.43 - 10. / 1000., delta=0.01)
 
     def test_idle_shift_after_contact(self):
         # Real RF2000v2: after pressing the bed the idle force stays ~40

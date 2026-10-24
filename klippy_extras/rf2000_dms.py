@@ -165,9 +165,10 @@ class RF2000DMS:
         self.backoff_retries = config.getint('backoff_retries', 3, minval=0)
         # Contact must be rigid: pushing stiffness_push further must raise
         # the force by at least min_stiffness digits/mm. A nozzle on the bed
-        # gives ~5000 digits/mm on a real RF2000v2, a plastic blob 40-200.
+        # gives ~5000 digits/mm on a real RF2000v2 (~1000 at the flexing
+        # front-left corner), a plastic blob 40-200.
         self.min_stiffness = config.getfloat('min_stiffness', 400., minval=0.)
-        self.stiffness_push = config.getfloat('stiffness_push', 0.03,
+        self.stiffness_push = config.getfloat('stiffness_push', 0.05,
                                               above=0., maxval=0.1)
         self.z_min_position = probe.lookup_minimum_z(config)
         self.param_helper = probe.ProbeParameterHelper(config)
@@ -519,14 +520,21 @@ class RF2000DMS:
             raise self.printer.command_error("DMS: no contact in slow pass")
         if check_stiffness and self.min_stiffness:
             toolhead.wait_moves()
-            f1 = self.read_fresh()[0]
             pos = toolhead.get_position()
             pos[2] -= self.stiffness_push
             toolhead.manual_move(pos, slow_speed)
             toolhead.wait_moves()
             self.read_fresh()  # this sample may still be from the move
             f2 = self.read_fresh()[0]
-            stiffness = abs(f2 - f1) / self.stiffness_push
+            # Total force over the total depth below the contact point: the
+            # force right after the slow pass is still settling, and the
+            # stiff-but-flexing bed corner (~1000 digits/mm at X5 Y5 on the
+            # test printer) looked like a blob when measured from there.
+            depth = max(z2 - pos[2], self.stiffness_push)
+            stiffness = max(abs(f2 - idle) - contact_delta, 0.) / depth
+            logging.info("rf2000_dms: stiffness check z2=%.4f push_to=%.4f"
+                         " idle=%.0f f2=%.0f v2=%s -> %.0f digits/mm",
+                         z2, pos[2], idle, f2, v2, stiffness)
             if stiffness < self.min_stiffness:
                 pos[2] = max(pos[2], z2) + self.backoff_dist
                 toolhead.manual_move(pos, params['lift_speed'])
@@ -540,10 +548,22 @@ class RF2000DMS:
             pos[2] = max(pos[2], z2) + self.release_dist
             toolhead.manual_move(pos, params['lift_speed'])
         return z2, idle, v2
+    def _probe_contact_retry(self, gcmd, contact_delta=None):
+        # A false trigger (gauge zero shift) shows up as a "soft contact";
+        # it is random, so one retry from the lifted position is safe. A
+        # real blob fails both attempts.
+        try:
+            return self.probe_contact(gcmd, contact_delta)
+        except self.printer.command_error as e:
+            if 'soft contact' not in str(e):
+                raise
+            logging.info("rf2000_dms: %s - retrying once", e)
+            gcmd.respond_info("DMS: soft contact, probing this point again")
+            return self.probe_contact(gcmd, contact_delta)
     def run_probe(self, gcmd):
         toolhead = self._toolhead()
         start = toolhead.get_position()
-        z, idle, val = self.probe_contact(gcmd)
+        z, idle, val = self._probe_contact_retry(gcmd)
         epos = [start[0], start[1], z]
         self.results.append(manual_probe.create_probe_result(
             epos, self.get_offsets()))
@@ -835,7 +855,7 @@ class RF2000DMS:
         toolhead.manual_move([None, None, start_z], params['lift_speed'])
         self.probing += 1
         try:
-            z, idle, val = self.probe_contact(gcmd, contact_delta)
+            z, idle, val = self._probe_contact_retry(gcmd, contact_delta)
         finally:
             self.probing = max(0, self.probing - 1)
         return z - self.z_offset
