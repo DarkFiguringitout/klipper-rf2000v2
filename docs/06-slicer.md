@@ -17,6 +17,19 @@
 Do not enter the 33.6 mm offset in the slicer as well, or it is applied
 twice.
 
+## Quality settings for Klipper
+
+| Setting | Where (PrusaSlicer / OrcaSlicer) | Why |
+|---|---|---|
+| Label objects: **Firmware-specific** | Print settings > Output | Klipper `EXCLUDE_OBJECT` (skip one failed part in Mainsail) and the adaptive bed mesh |
+| Arc fitting / G2-G3 | Print settings > Advanced | `[gcode_arcs]` is enabled: smaller files, smoother curves |
+| Use relative E distances | Printer > General | what the macros expect (`M83`) |
+| Use firmware retraction (optional) | Printer > General | retraction tunable live from Mainsail (`SET_RETRACTION`) |
+| Max volumetric speed | Filament | from `DMS_VISCOSITY_TEST` (or ~8 mm³/s for PLA as a start) |
+
+Pressure advance belongs into Klipper (`docs/04` step 10b), not into the
+slicer.
+
 ## Start G-code
 
 PrusaSlicer / SuperSlicer / OrcaSlicer:
@@ -36,9 +49,15 @@ PRINT_START BED={material_bed_temperature_layer_0} EXTRUDER={material_print_temp
 
 Set an unused extruder temperature to 0 and it stays cold.
 
-Optional `PRINT_START` parameters: `MESH=load|scan|none`, `PROFILE=default`,
+Optional `PRINT_START` parameters: `MESH=load|scan|adaptive|none`, `PROFILE=default`,
 `Z_OFFSET_SCAN=0/1`, `MONITOR=0/1` (DMS emergency monitor during the print). The defaults are in the `PRINT_START` macro
 (`config/rf2000v2/macros/print.cfg`).
+
+`MESH=adaptive` (needs "Label objects") probes a fresh mesh only under the
+parts at printing temperature - the best first layer, at the cost of
+~25 s per probe point. The default `load` uses the saved mesh plus the
+z-offset scan, which is quick and matched the real bed within 0.04 mm on
+the tested printer.
 
 ## End G-code
 
@@ -55,6 +74,16 @@ DMS_PRESSURE_CONTROL TARGET=3000 MODE=speed MIN_SPEED=60
 ```
 
 (`TARGET` from your `DMS_VISCOSITY_TEST`). `PRINT_END` switches it off.
+
+## Mainsail
+
+`python3 ~/klipper-rf2000v2/scripts/mainsail_defaults.py` adds PLA / PETG /
+ABS / TPU temperature presets (both nozzles + bed) and hides the RF M-code
+aliases and internal macros from the macro panel (they keep working from
+G-code; un-hide in Mainsail > Settings > Macros). Safe to run again.
+
+The red "!" in Mainsail's top bar is the **emergency stop** (Klipper shuts
+down, `FIRMWARE_RESTART` to recover).
 
 ## Single extrusion
 
