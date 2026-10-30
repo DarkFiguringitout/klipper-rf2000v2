@@ -744,8 +744,6 @@ class RF2000DMS:
         if not e_moving:
             # Travel / retraction - keep the last factor
             return
-        if cur_z is not None and cur_z < self.fc_min_height:
-            return
         digits = abs(val)
         if self.pc_avg is None:
             self.pc_avg = digits

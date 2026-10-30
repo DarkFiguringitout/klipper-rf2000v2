@@ -126,8 +126,9 @@ that pressure directly. Three ways to use it:
    but never below `MIN_SPEED` / `MIN_FLOW` and never above your own setting.
    `speed` mode is the safe default: the print slows down where the hotend
    cannot keep up and keeps the same extrusion per mm, so there is no
-   under-extrusion. It only acts while extruding and above
-   `flow_compensation_min_height`, and it resets at the end of the print.
+   under-extrusion. It only acts while extruding, also on the first layer
+   (a nozzle close to the bed made the extruder skip there, unnoticed),
+   and it resets at the end of the print.
    It runs in addition to pressure advance and does not change it.
 3. **RF-style open loop (M3911):** reduce flow and/or speed proportionally
    between `MIN_DIGITS` and `MAX_DIGITS`, as in the community firmware.

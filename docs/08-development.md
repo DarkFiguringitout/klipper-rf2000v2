@@ -129,10 +129,18 @@ First layer on the plate (print of 30 Oct): the scan in PRINT_START ran
 75 s after heat-up on a cold printer and read -0.777, while rigid contacts
 at the same spot later read -0.66 to -0.69 in the same homed frame. Six
 0.01 mm steps of live adjust on top left about 0.03 mm under the nozzle.
-The right height, judged at the printer, was offset -0.209, so PRINT_START
-now soaks 180 s and the scan adds `z_offset_scan_trim` 0.13. Contacts at
+The right height, judged at the printer, was offset -0.189, so PRINT_START
+now soaks 180 s and the scan adds `z_offset_scan_trim` 0.15. Contacts at
 225 C are not usable (586-1293 digits/mm: the nozzle sits on a soft PLA
 film). The soak length is not verified from a cold start yet.
+
+The same print made the extruder skip on the first layer: pressure control
+ignored everything below `flow_compensation_min_height` (0.30 mm), so
+5000-6400 digits stayed uncorrected at 2.4 mm3/s. 60 % speed and 235 C did
+not help, 0.02 mm more height halved the pressure. Pressure in free air at
+235 C was 3221 / 4577 / 6457 digits at 2.4 / 4.8 / 9.6 mm3/s against
+1012 / 2964 / 4309 in docs/06: the nozzle was partly restricted, not
+blocked. Pressure control now also runs on the first layer.
 
 ## What could not be tested without the printer
 

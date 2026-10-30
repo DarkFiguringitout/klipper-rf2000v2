@@ -69,6 +69,20 @@ the tested printer.
 PRINT_END
 ```
 
+## Profiles beyond the basics
+
+Tested limits: 8 mm3/s, 1000 mm/s2, 150 mm/s travel. Layer height sets the
+top speed, because a 0.28 mm layer reaches 8 mm3/s at about 60 mm/s.
+
+| Profile | Layer | Outer / inner / infill mm/s | Main features |
+|---|---|---|---|
+| Speed | 0.28 | 40 / 60 / 80 | 2 walls, adaptive cubic, one wall on top, extrusion rate smoothing |
+| Quality | 0.16 | 35 / 55 / 80 | ironing, scarf seam, overhang reversal, Z anti-aliasing, gyroid |
+| Detail | 0.08 | 25 / 40 / 60 | as Quality, without ironing, seam at the back |
+
+Pressure advance and input shaping stay off until they are calibrated
+(docs/04 steps 10b and 11).
+
 ## Measured with the strain gauge (V3 hotend, PLA, 0.4 mm)
 
 Flow (`DMS_VISCOSITY_TEST`, 60 s soak at temperature; avg/peak digits):
