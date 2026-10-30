@@ -80,6 +80,9 @@ top speed, because a 0.28 mm layer reaches 8 mm3/s at about 60 mm/s.
 | Quality | 0.16 | 35 / 55 / 80 | ironing, scarf seam, overhang reversal, Z anti-aliasing, gyroid |
 | Detail | 0.08 | 25 / 40 / 60 | as Quality, without ironing, seam at the back |
 
+All profiles use 18 / 25 mm/s on the first layer (walls / infill): 25 / 40
+mm/s pushed the first layer to the extruder's skip limit.
+
 Pressure advance and input shaping stay off until they are calibrated
 (docs/04 steps 10b and 11).
 
@@ -99,9 +102,26 @@ Flow (`DMS_VISCOSITY_TEST`, 60 s soak at temperature; avg/peak digits):
 At 210 C the extruder starts slipping above ~8.4 mm³/s (peak far above
 average, then pressure collapses = under-extrusion); at 225 C pressure is a
 third lower and steady to 9.6 mm³/s. That is why the stock manual
-recommends 230 C for PLA. Profile: **225 C, 8 mm³/s**. Measure right after
+recommends 230 C for PLA. First profile: 225 C, 8 mm³/s (see the live sweep below). Measure right after
 a hotter purge and the melt zone is still hot: one earlier run showed a
 flat curve and a misleading 12 mm³/s - always soak a minute first.
+
+Live sweep during a long print with a partly restricted nozzle: free-air
+pressure was 3-4x the table above at 2.4 mm³/s and rose again within
+minutes of a hot flush. Speed is what pressure control held at each
+temperature:
+
+| Nozzle | Target digits | Speed held | Median digits |
+|---|---|---|---|
+| 215 C | 4000 | 55-60 % | 5700 |
+| 225 C | 4000 | 50 % (its minimum) | 5000-6400 |
+| 240 C | 4000 | 65 % | 4750 |
+| 245 C | 4500 | 84-100 % over 10 min | 4300-4770 |
+
+Hotter is faster here, so `RF2000 PLA` runs 235 C / 6 mm³/s and
+`RF2000 PLA Fast` 245 C / 8 mm³/s, both with target 4500. The extruder
+skips from about 6000 digits. Peaks at 245 C still reached 6000-6600, and
+surface quality at 245 C is not judged yet.
 
 Retraction against ooze: extrude at 4.8 mm³/s until the pressure is
 steady, retract, watch the residual nozzle pressure (PLA, 210 C):
