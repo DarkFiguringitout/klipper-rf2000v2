@@ -125,6 +125,15 @@ spindle, and smaller macro issues - all re-verified on the printer. Plus a PLA b
 trigger early (soft force curve, ~40-200 digits/mm instead of 1000s):
 clean the nozzles before probing.
 
+First layer on the plate (print of 30 Oct): the scan in PRINT_START ran
+75 s after heat-up on a cold printer and read -0.777, while rigid contacts
+at the same spot later read -0.66 to -0.69 in the same homed frame. Six
+0.01 mm steps of live adjust on top left about 0.03 mm under the nozzle.
+The right height, judged at the printer, was offset -0.209, so PRINT_START
+now soaks 180 s and the scan adds `z_offset_scan_trim` 0.13. Contacts at
+225 C are not usable (586-1293 digits/mm: the nozzle sits on a soft PLA
+film). The soak length is not verified from a cold start yet.
+
 ## What could not be tested without the printer
 
 Status after the first hardware run: everything in the table above is

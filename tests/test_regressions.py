@@ -102,6 +102,15 @@ class TestConfigGuards(unittest.TestCase):
             self.assertLess(kp, 60., "%s pid_Kp looks like the RF fw value" % h)
             self.assertNotRegex(section(hw, h), r'(?m)^(control|pid_K[pid]):', h)
 
+    def test_scan_soaks_and_trims(self):
+        # a scan 75 s after heat-up read 0.1 mm low: first layer on the plate
+        pc = open(os.path.join(REPO, "config/rf2000v2/macros/print.cfg")).read()
+        start = section(pc, "gcode_macro PRINT_START")
+        self.assertLess(start.index("G4 P{soak"),
+                        start.index("    DMS_Z_OFFSET_SCAN"))
+        dms = open(os.path.join(REPO, "config/rf2000v2/dms.cfg")).read()
+        self.assertRegex(dms, r"(?m)^z_offset_scan_trim: 0\.\d+")
+
     def test_purge_relieves_nozzle_before_lift(self):
         # a purge line followed by a Z lift without retract tripped the
         # DMS emergency stop (7710 digits) on the first real print

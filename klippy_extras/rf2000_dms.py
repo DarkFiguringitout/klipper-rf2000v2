@@ -137,6 +137,9 @@ class RF2000DMS:
         self.tare = 0
         # Probing configuration (defaults from RF2000v2 firmware HBS)
         self.z_offset = config.getfloat('z_offset', 0.)
+        # Added to each z-offset scan result (the contact is measured at
+        # 150 C, the print runs hotter and needs some squish room)
+        self.scan_trim = config.getfloat('z_offset_scan_trim', 0.)
         self.x_offset = config.getfloat('x_offset', 0.)
         self.y_offset = config.getfloat('y_offset', 0.)
         self.contact_delta = config.getint('contact_delta', 10, minval=1)
@@ -897,14 +900,14 @@ class RF2000DMS:
             mesh_z = bed_mesh.get_mesh().calc_z(x, y)
         gm = self.printer.lookup_object('gcode_move')
         current = gm.get_status()['homing_origin'][2]
-        target = measured - mesh_z
+        target = measured - mesh_z + self.scan_trim
         new = current + (target - current) * learn
         self.gcode.run_script_from_command(
             "SET_GCODE_OFFSET Z=%.4f MOVE=0" % (new,))
         gcmd.respond_info(
-            "DMS z-offset scan at X%.1f Y%.1f: contact Z=%.4f mesh=%.4f ->"
-            " g-code Z offset %.4f (was %.4f)" % (x, y, measured, mesh_z,
-                                                 new, current))
+            "DMS z-offset scan at X%.1f Y%.1f: contact Z=%.4f mesh=%.4f"
+            " trim=%.3f -> g-code Z offset %.4f (was %.4f)"
+            % (x, y, measured, mesh_z, self.scan_trim, new, current))
     cmd_DMS_FIND_Z_ORIGIN_help = ("Milling: move the bed up until the tool"
                                   " touches the work part and set Z=0")
     def cmd_DMS_FIND_Z_ORIGIN(self, gcmd):
