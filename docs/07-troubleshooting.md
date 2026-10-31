@@ -24,6 +24,7 @@
 | Emergency pause during a print | Force > ±15000 digits: clogged nozzle, nozzle too close to the bed, part came loose. `DMS_SET_LIMITS PAUSE_MAX=` to raise the limit |
 | `DMS emergency stop: Z axis blocked` | Something blocked the bed while Z was moving |
 | `Z-max endstop triggered outside of homing` | The bed hit the Z-max switch: check `position_max` of Z |
+| Print comes loose after hours, bed reads room temperature with target 0 | The bed target was set to 0 during the print. `_RF_BED_GUARD` now restores it within 30 s and reports it in the console. The LCD menu (Temperature > Cooldown) changes it without any console entry, so stay out of that menu during a print. |
 | First layer too high / low | Live adjust with the bed up/down keys (Bed Up moves the plate closer to the nozzle, 0.01 mm per press), then add the difference to `z_offset_scan_trim` in `dms.cfg`. `klippy.log` shows each scan: a clearly lower `contact Z` than the last prints at the same spot means the scan ran before the printer was warm; raise `variable_soak` of PRINT_START |
 | T1 prints offset from T0 | `SET_TOOL_OFFSET X= Y=` after a calibration print, `RF_ALIGN_EXTRUDERS` for Z |
 | LCD blank | Normal until Klipper connects. Otherwise check `[display]` errors in `klippy.log` |

@@ -111,6 +111,15 @@ class TestConfigGuards(unittest.TestCase):
         dms = open(os.path.join(REPO, "config/rf2000v2/dms.cfg")).read()
         self.assertRegex(dms, r"(?m)^z_offset_scan_trim: 0\.\d+")
 
+    def test_bed_guard_stands_down_at_print_end(self):
+        # the guard restores a bed target that drops to 0 during a print,
+        # so the normal end of a print has to clear it first
+        pc = open(os.path.join(REPO, "config/rf2000v2/macros/print.cfg")).read()
+        end = section(pc, "gcode_macro PRINT_END")
+        self.assertLess(end.index("MACRO=_RF_BED_GUARD VARIABLE=target VALUE=0"),
+                        end.index("TURN_OFF_HEATERS"))
+        self.assertIn("_RF_BED_GUARD\n", section(pc, "delayed_gcode _RF_BED_GUARD_LOOP"))
+
     def test_purge_relieves_nozzle_before_lift(self):
         # a purge line followed by a Z lift without retract tripped the
         # DMS emergency stop (7710 digits) on the first real print
