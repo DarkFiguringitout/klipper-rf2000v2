@@ -11,7 +11,7 @@
 | Extruders | 2, nozzle 0.4, filament 1.75 |
 | Extruder offsets | **0 / 0 for both**. Klipper applies the T1 offset itself |
 | Retraction (direct drive) | **2.0 mm @ 40 mm/s** (measured, see below) |
-| Z-hop | **0.4 mm** Slope Lift, about 10 % longer on a plate of separate parts, see `docs/08` |
+| Z-hop | **0.4 mm** Slope Lift, see `docs/08` |
 | Tool change G-code | empty, `T0`/`T1` handle the offsets and Z-hop |
 | Max volumetric speed | measure with `DMS_VISCOSITY_TEST` |
 
@@ -26,7 +26,7 @@ twice.
 | Arc fitting / G2-G3 | Print settings > Advanced | `[gcode_arcs]` is enabled: smaller files, smoother curves |
 | Use relative E distances | Printer > General | what the macros expect (`M83`) |
 | Use firmware retraction (optional) | Printer > General | retraction tunable live from Mainsail (`SET_RETRACTION`) |
-| Avoid crossing walls | Others > Travel | keeps travel off thin walls, on in every profile |
+| Avoid crossing perimeters / Avoid crossing walls | Layers and perimeters / Quality | keeps travel off thin walls. With Z-hop about 10 % longer on a test plate of six open rings |
 | Max volumetric speed | Filament | from `DMS_VISCOSITY_TEST` (see below): PLA **8 mm³/s at 225 C**, ~6 mm³/s at 210 C on the V3 hotend |
 
 Pressure advance belongs into Klipper (`docs/04` step 10b), not into the
