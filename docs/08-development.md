@@ -145,11 +145,13 @@ blocked. Pressure control now also runs on the first layer.
 The next long print ran 10 h 20 min with the bed off from layer 12: the
 target went from 60 to 0 at 23:28 while the extruder target stayed. The
 G-code holds a single `M140 S60`, the console history has no bed command, so
-the only route found that leaves no trace is the LCD menu's Cooldown hotbed
-entry (not proven). No print fault in the log: no pause, no stall, heater
+the only route that leaves no trace is the LCD menu, and the user confirmed
+using it around then. Cooldown hotbed fits, because the extruder target
+stayed (the exact entry is not recorded). No print fault in the log: no pause, no stall, heater
 within 2 C, 100 % speed from layer 50. The plate stayed at 22 C and the
 print failed somewhere before the user stopped it at layer 329 of 397.
-`_RF_BED_GUARD` now checks the target every 30 s during a print. Klippy logs
+`_RF_BED_GUARD` now checks the target every 30 s during a print and the
+Cooldown list is hidden while printing or paused. Klippy logs
 no strain gauge values, so the log cannot date such a failure.
 
 ## What could not be tested without the printer

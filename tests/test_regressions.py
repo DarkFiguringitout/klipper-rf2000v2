@@ -120,6 +120,11 @@ class TestConfigGuards(unittest.TestCase):
                         end.index("TURN_OFF_HEATERS"))
         self.assertIn("_RF_BED_GUARD\n", section(pc, "delayed_gcode _RF_BED_GUARD_LOOP"))
 
+    def test_cooldown_menu_hidden_during_print(self):
+        cfg = open(os.path.join(REPO, "config/rf2000v2/display.cfg")).read()
+        self.assertRegex(section(cfg, "menu __main __temp __cooldown"),
+                         r'(?m)^enable: \{printer\.print_stats\.state not in')
+
     def test_purge_relieves_nozzle_before_lift(self):
         # a purge line followed by a Z lift without retract tripped the
         # DMS emergency stop (7710 digits) on the first real print
