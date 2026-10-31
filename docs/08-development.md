@@ -149,10 +149,21 @@ the only route that leaves no trace is the LCD menu, and the user confirmed
 using it around then. Cooldown hotbed fits, because the extruder target
 stayed (the exact entry is not recorded). No print fault in the log: no pause, no stall, heater
 within 2 C, 100 % speed from layer 50. The plate stayed at 22 C and the
-print failed somewhere before the user stopped it at layer 329 of 397.
+prints stayed on it but broke higher up, and the user stopped at layer 329
+of 397.
 `_RF_BED_GUARD` now checks the target every 30 s during a print and the
 Cooldown list is hidden while printing or paused. Klippy logs
 no strain gauge values, so the log cannot date such a failure.
+
+The cold bed does not explain a break above the plate, the G-code does. The
+11 ghosts are hollow shells: from 12 mm up the layers are almost all outer
+wall, no infill, 0.92 mm thick from 28 to 52 mm, open at the face cut-outs.
+Each wall waited about 1.5 min for the next pass, with the fan of the left
+nozzle dead and the room near 20 C, and 10 to 18 travels per layer crossed
+the walls with Z-hop 0 and Avoid crossing walls off. Flow 1.08 is below the
+1.27 that closed the gaps earlier, which matters most on a two-line wall.
+Which of these snapped it cannot be read from the log. The profiles now use
+Z-hop 0.4 mm and Avoid crossing walls.
 
 ## What could not be tested without the printer
 
